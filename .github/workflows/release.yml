@@ -56,7 +56,7 @@ jobs:
           EINVOICE_JS_TOKEN: ${{ secrets.EINVOICE_JS_TOKEN }}
         run: |
           if [ -z "$EINVOICE_JS_TOKEN" ]; then
-            echo "::notice title=sync-check skipped::einvoice-js is private and no EINVOICE_JS_TOKEN secret is set. Run make sync-check locally (EINVOICE_JS_DIR=../elyonar-sdk) before a release."
+            echo "::notice title=sync-check skipped::einvoice-js is private and no EINVOICE_JS_TOKEN secret is set. Run make sync-check locally before a release, with EINVOICE_JS_DIR set to your einvoice-js checkout (any folder name)."
             exit 0
           fi
           make sync-check

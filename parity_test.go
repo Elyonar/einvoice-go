@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"sort"
@@ -574,9 +575,19 @@ func TestParityTypesGenIsWhatTheSnapshotGenerates(t *testing.T) {
 	if err != nil {
 		t.Skip("node is not installed; CI runs `make sync-check` instead")
 	}
-	gen := "../elyonar-sdk/scripts/gen-types.mjs"
-	if _, err := os.Stat(gen); err != nil {
-		t.Skip("no local einvoice-js checkout at ../elyonar-sdk; CI runs `make sync-check` instead")
+	// The local einvoice-js checkout: EINVOICE_JS_DIR, else a sibling folder (its clone name first).
+	var gen string
+	for _, dir := range []string{os.Getenv("EINVOICE_JS_DIR"), "../einvoice-js", "../elyonar-sdk"} {
+		if dir == "" {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(dir, "scripts/gen-types.mjs")); err == nil {
+			gen = filepath.Join(dir, "scripts/gen-types.mjs")
+			break
+		}
+	}
+	if gen == "" {
+		t.Skip("no local einvoice-js checkout (set EINVOICE_JS_DIR); CI runs `make sync-check` instead")
 	}
 	out, err := exec.Command(node, gen, "--lang", "go", "--snapshot", "scripts/openapi-api-key-ops.json", "--out", "types_gen.go", "--check").CombinedOutput()
 	if err != nil {

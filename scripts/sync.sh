@@ -8,7 +8,7 @@
 #
 #   EINVOICE_JS_REF=<sha|tag|branch>   the einvoice-js commit to pin (default below; bump it to take a
 #                                      new API surface — a commit SHA needs no einvoice-js release)
-#   EINVOICE_JS_DIR=../elyonar-sdk     use a local checkout instead of fetching (development only)
+#   EINVOICE_JS_DIR=<path>             use a local einvoice-js checkout (any folder name) instead of fetching
 #   EINVOICE_JS_TOKEN=<token>          a GitHub token that may read einvoice-js while it is private (CI: a secret)
 set -eu
 

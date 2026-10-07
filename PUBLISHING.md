@@ -29,7 +29,7 @@ notice (no `EINVOICE_JS_TOKEN` secret is set; the owner chose this over storing 
 guard locally before every release:
 
 ```bash
-EINVOICE_JS_DIR=../elyonar-sdk make sync-check
+EINVOICE_JS_DIR=../einvoice-js make sync-check   # the path of your einvoice-js checkout, whatever the folder is called
 ```
 
 Once einvoice-js is public, the job runs in CI unchanged.
