@@ -1,26 +1,13 @@
 # einvoice-go
 
-Official Go SDK for the Yona e-invoicing API. It covers exactly what an API key may call:
-invoicing, submissions to the tax authority, output and share links, items, reference data, buyers,
-the read-only seller, received invoices and issued history, invoice settings, the tax connection, the
-organisation (read), billing reads and webhooks (read, test, redeliver).
+The official Go SDK for the [Yona](https://useyona.com) e-invoicing API: create and manage invoices,
+report them to the tax authority, and work with buyers, items, received invoices, billing and
+webhooks. Standard library only, Go 1.22+.
 
-Every Yona SDK exposes the same modules and methods; in Go the names are `PascalCase`
-(`client.Invoices.IssueCreditNote`), so the portal guides read the same in every language.
+Every Yona SDK has the same modules and methods; in Go the names are `PascalCase`
+(`client.Invoices.IssueCreditNote`).
 
-## Features
-
-- **One key, nothing else to configure.** `sk_test_…` is the sandbox, `sk_live_…` is live, on the same host.
-- **Typed.** Every request and response shape is a struct generated from the API's OpenAPI (`types_gen.go`).
-- **Safe retries.** GET, PUT, DELETE and writes carrying an `Idempotency-Key` are retried on network
-  errors, timeouts, 408, 429 and 5xx, honouring `Retry-After`. The SDK generates the key on the
-  routes that accept one, so its own retry is never charged twice.
-- **Typed errors.** `*ValidationError`, `*NotFoundError`, `*RateLimitError`… all unwrap to `*APIError`
-  with `Status`, `ErrorCode`, `Errors`, `RequestID` and `RetryAfter`; narrow with `errors.As`.
-- **Webhooks.** `VerifyWebhook` checks the `Yona-Signature` over the raw body in constant time.
-- **Light.** Standard library only. Go 1.22+.
-
-## Installation
+## Install
 
 ```bash
 go get github.com/elyonar/einvoice-go
@@ -46,7 +33,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(client.Mode()) // einvoice.ModeSandbox for sk_test_… keys, einvoice.ModeLive for sk_live_… keys
 
 	// 1. A buyer
 	buyer, err := client.Buyers.Create(ctx, &einvoice.CreateBuyerBody{
@@ -60,7 +46,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// 2. A saved item (optional: a line can also carry its own description, unit code and codes)
+	// 2. A saved item
 	item, err := client.Items.Create(ctx, &einvoice.CreateItemBody{
 		Name:            "Laptop",
 		ItemType:        einvoice.CreateItemDtoItemTypeGoods,
@@ -75,7 +61,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// 3. A draft invoice: InvoiceKind and TaxCategory, never a tax percent
+	// 3. A draft invoice
 	invoice, err := client.Invoices.Create(ctx, &einvoice.CreateInvoiceBody{
 		InvoiceKind: "B2B",
 		InvoiceDate: "2026-10-05",
@@ -87,11 +73,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// 4. Finalise and report it to the tax authority
+	// 4. Finalise it and report it to the tax authority
 	if _, err := client.Invoices.Finalise(ctx, invoice.ID); err != nil {
 		log.Fatal(err)
 	}
-	if _, err := client.Submissions.Submit(ctx, invoice.ID, nil); err != nil { // 202: queued
+	if _, err := client.Submissions.Submit(ctx, invoice.ID, nil); err != nil {
 		log.Fatal(err)
 	}
 	status, err := client.Submissions.GetStatus(ctx, invoice.ID)
@@ -102,51 +88,32 @@ func main() {
 }
 ```
 
-That is all the configuration an integration needs: the key. The SDK talks to the production
-gateway for both modes; the key's prefix decides whether you are in the sandbox or live.
+Every method takes a `context.Context` first; cancel it or give it a deadline and the request stops.
 
-To fail fast when a deployment is given the wrong key:
+## Sandbox and live
+
+The key is the only configuration. An `sk_test_…` key works in the sandbox and an `sk_live_…` key
+in live, on the same host; `client.Mode()` tells you which. Going live means deploying a live key,
+nothing else changes.
+
+To make a deployment refuse a key of the wrong kind:
 
 ```go
-client, err := einvoice.New(key, einvoice.WithAssertMode(einvoice.ModeLive)) // *ConfigError for an sk_test_ key
+client, err := einvoice.New(key, einvoice.WithAssertMode(einvoice.ModeLive))
 ```
-
-A malformed key is refused by `New` with a `*ConfigError` (the key is never echoed).
-
-Every method takes a `context.Context` first: cancel it or give it a deadline and the request stops;
-a cancelled context is never retried and comes back as `ctx.Err()`.
-
-## Guides
-
-The recipes in [`examples/`](examples/) are the developer guides of the Yona portal (Developers,
-Overview): your first invoice, webhooks, errors and retries, sandbox and live, received invoices.
-Each runs end to end against a sandbox key (`YONA_API_KEY=sk_test_… make examples`).
-
-## Verifying your setup
-
-```bash
-YONA_API_KEY=sk_test_… make smoke-remote
-```
-
-runs free reads across every module and then the first-invoice example against the real API, with
-your own sandbox key, and prints a table method → OK/FAIL with the error code and request id of any
-failure. It refuses a live key and never prints the key. The example creates sandbox data in your
-organisation: a buyer, an item and an invoice submitted to the tax authority's sandbox.
 
 ## Responses and pagination
 
-Methods return a pointer to the API's `data` as a struct with the wire names in its json tags
-(`invoice.InvoiceNumber`). Optional and nullable fields are pointers; `einvoice.Ptr(v)` makes one
-when building a request. List methods return a `*Page[T]`:
+Methods return the API's answer as a typed struct (`invoice.InvoiceNumber`). Optional fields are
+pointers; `einvoice.Ptr(v)` makes one when building a request. List methods return a page:
 
 ```go
 page, err := client.Buyers.List(ctx, &einvoice.ListBuyersQuery{Limit: einvoice.Ptr(50.0)})
 page.Data       // []einvoice.BuyerViewDto
 page.Pagination // Total, Page, PageSize, TotalPages, HasNext, HasPrevious
-page.RequestID
 ```
 
-`Paginate` walks every page for you; `Collect` gathers them into one slice:
+`Paginate` walks every page for you:
 
 ```go
 query := &einvoice.ListBuyersQuery{Limit: einvoice.Ptr(100.0)}
@@ -159,30 +126,29 @@ err := einvoice.Paginate(ctx, func(ctx context.Context, page int64) (*einvoice.P
 })
 ```
 
-Received invoices and issued history answer an object with `Items`, so they return a `*Paginated[D]`:
-`res.Data.Items` and `res.Pagination` (a pointer; nil when the answer carried none).
-
-PDF downloads return a `*BinaryResponse`: `Data` (bytes), `ContentType`, `FileName`, `RequestID`.
-
-A few answers are one of two shapes (`IssueCreditNoteData`, `IssueDebitNoteData`): they keep the
-JSON and decode on demand with `AsCreditNotePreviewAnswerDto()` / `AsCreditNoteIssuedDto()`. Values
-the API types as `string | number` (quantities, unit prices) are `einvoice.Amount`: `String()` keeps
-the exact text, `Float64()` parses it; build one with `AmountString` or `AmountNumber`.
+Received invoices and issued history return `*Paginated[D]` with the items under `Data.Items`. PDF
+downloads return `*BinaryResponse` (`Data`, `ContentType`, `FileName`). Quantities and prices the API
+accepts as a string or a number are `einvoice.Amount` (`AmountString("25000.00")`, `AmountNumber(2)`).
+Two answers come in one of two shapes (`IssueCreditNoteData`, `IssueDebitNoteData`); decode them with
+their `As…()` methods.
 
 ## Errors
 
-Every refusal of the API is a typed wrapper chosen by status, each unwrapping to `*APIError`:
+A refused request returns a typed error you can match with `errors.As`:
 
-| Status | Type | Typical `ErrorCode` |
-|---|---|---|
-| 400, 422 | `*ValidationError` | `VAL…` |
-| 401 | `*AuthenticationError` | `AUTH…` (a revoked, expired or malformed key) |
-| 402 | `*InsufficientCreditsError` | `BIZ001` |
-| 403 | `*PermissionError` | `AUTH019` (capability), `AUTH018` (user-only route) |
-| 404 | `*NotFoundError` | `RES001` |
-| 409 | `*ConflictError` | `BIZ…` (state), `RES002` (duplicate) |
-| 429 | `*RateLimitError` | `SYS005`, with `RetryAfter` |
-| 5xx | `*ServerError` | `SYS001` |
+| Status | Type |
+|---|---|
+| 400, 422 | `*ValidationError` |
+| 401 | `*AuthenticationError` |
+| 402 | `*InsufficientCreditsError` |
+| 403 | `*PermissionError` |
+| 404 | `*NotFoundError` |
+| 409 | `*ConflictError` |
+| 429 | `*RateLimitError` |
+| 5xx | `*ServerError` |
+
+All of them unwrap to `*APIError`, which carries `Status`, `ErrorCode`, `Errors` (per field),
+`RequestID` and `RetryAfter`:
 
 ```go
 _, err := client.Invoices.Create(ctx, params)
@@ -198,33 +164,24 @@ case errors.As(err, &apiErr):
 }
 ```
 
-Branch on `ErrorCode`, never on the message. Outside the API: `*TimeoutError`, `*ConnectionError`
-(unwraps to the transport's error), `*ConfigError`, `*WebhookError`. Every error the SDK returns
-implements the `einvoice.Error` interface; a cancelled context is returned as `ctx.Err()`.
+Branch on `ErrorCode`, not on the message. Problems before the API answers are `*TimeoutError`,
+`*ConnectionError` and `*ConfigError`; a cancelled context comes back as `ctx.Err()`.
 
 ## Retries and idempotency
 
-```go
-client, err := einvoice.New(key,
-	einvoice.WithTimeout(30*time.Second),
-	einvoice.WithRetry(einvoice.RetryConfig{MaxRetries: einvoice.Ptr(3), BaseDelay: 500 * time.Millisecond, MaxDelay: 8 * time.Second, MaxRetryAfter: 30 * time.Second}),
-)
-```
+Reads, and writes that carry an `Idempotency-Key`, are retried automatically on network errors,
+timeouts, 408, 429 and 5xx, with backoff and respecting `Retry-After`. Other writes are never retried.
 
-The SDK retries GET, PUT and DELETE, and writes that carry an `Idempotency-Key`, on network errors,
-timeouts, 408, 429 and 5xx, with exponential backoff and jitter; a `Retry-After` on 429/503 is
-waited out up to `MaxRetryAfter` (a longer one is returned at once, with `RetryAfter` set). Other
-writes are never retried for you. `WithTimeout` bounds each attempt, headers and body.
-
-On routes that accept an `Idempotency-Key` (`Invoices.Create`, `Submissions.Submit`, `Output.Send`,
-the downloads…) the SDK generates one per call, so its own retries are never applied or charged
-twice. Pass your own to make a retry across process restarts safe:
+Where the API accepts an `Idempotency-Key` (creating an invoice, submitting, sending, downloading…)
+the SDK generates one per call, so a retry is never applied or charged twice. Pass your own to make a
+retry safe across restarts:
 
 ```go
 client.Invoices.Create(ctx, params, einvoice.WithIdempotencyKey("order-"+orderID))
 ```
 
-The other per-call options are `WithRequestTimeout`, `WithRequestHeaders` and `WithMaxRetries`.
+Tune the defaults with `WithTimeout` and `WithRetry` when creating the client, or per call with
+`WithRequestTimeout`, `WithRequestHeaders` and `WithMaxRetries`.
 
 ## Webhooks
 
@@ -244,121 +201,71 @@ http.HandleFunc("/webhooks/yona", func(w http.ResponseWriter, r *http.Request) {
 })
 ```
 
-Yona signs `t + "." + raw body` with HMAC-SHA256 and sends `Yona-Signature: t=…,v1=…` (a second
-`v1=` while a rotated secret overlaps). `VerifyWebhook` accepts the delivery when a signature matches
-in constant time and `t` is within ±300 s (`WithTolerance`, `WithNow`), and returns the parsed
-`*WebhookEvent`. Pass the raw body bytes, never a re-serialised object. Deduplicate on `event.ID`.
-`SignWebhookPayload` signs a payload exactly as Yona does, for testing your handler. Endpoints are
-registered in the dashboard; the key can list and test them (`client.Webhooks.Endpoints`), read
-deliveries and redeliver.
+`VerifyWebhook` checks the `Yona-Signature` header over the raw body and returns the event. Always
+pass the raw bytes, and deduplicate on `event.ID`. `SignWebhookPayload` signs a payload the way Yona
+does, so you can test your handler locally. Endpoints are registered in the dashboard; the SDK can
+list and test them and inspect deliveries.
 
-## What an API key cannot do
+## Guides
 
-Users, invitations, roles, API keys, organisation management, collections, purchases and webhook
-endpoint writes are done by a signed-in user in the dashboard; the API answers 403 `AUTH018` to a
-key. The seller is the organisation itself (read-only; `Sellers.Create/Update/Delete` are 409
-`BIZ205` and have no method). `ExcludedOperations` lists the API-key operations the SDK deliberately
-has no method for, with the reason.
+[`examples/`](examples/) holds complete, runnable walkthroughs: your first invoice, webhooks, errors
+and retries, sandbox and live, received invoices. Run them against your sandbox key with
+`YONA_API_KEY=sk_test_… make examples`.
 
 ## API reference
 
-Every method takes `ctx context.Context` first and optional trailing `...RequestOption`. Query and
-body parameters are the generated structs named after the operation (`*ListInvoicesQuery`,
-`*CreateInvoiceBody`); a query may be nil.
+Every method takes `ctx` first and optional trailing `...RequestOption`. Request and query types are
+named after the operation (`*CreateInvoiceBody`, `*ListInvoicesQuery`); a query may be nil.
 
-#### `client.Invoices`
-`Create(params)`, `List(query)`, `Get(id)`, `Update(id, params)`, `Delete(id)`, `Finalise(id)`, `Reopen(id)`, `Revise(id)`, `Cancel(id, params)`, `IssueCreditNote(id, params)`, `IssueDebitNote(id, params)`, `GetOverview(query)`, `GetStatistics(query)`, `GetSummary(query)`
+| Module | Methods |
+|---|---|
+| `client.Invoices` | `Create`, `List`, `Get`, `Update`, `Delete`, `Finalise`, `Reopen`, `Revise`, `Cancel`, `IssueCreditNote`, `IssueDebitNote`, `GetOverview`, `GetStatistics`, `GetSummary` |
+| `client.Submissions` | `Submit`, `Issue`, `CreateAndSubmit`, `BatchSubmit`, `Retry`, `Renumber`, `QueryStatus`, `GetStatus`, `RecordPayment`, `GetAuthorityCopy` |
+| `client.Output` | `GetDownloadLink`, `DownloadPDF`, `Send` |
+| `client.ShareLinks` | `Create`, `List`, `Revoke` |
+| `client.Items` | `List`, `Create`, `Get`, `Update`, `Delete`, `Archive`, `Unarchive`, `ListUsedCodes` |
+| `client.Reference` | `ListHsCodes`, `ListHsCodeCategories`, `ListResources`, `GetResource`, `LookupTaxID`, `ValidateInvoice` |
+| `client.Buyers` | `Create`, `List`, `Get`, `Update`, `Delete`, `BulkDelete`, `VerifyTaxNumber`, `GetVerificationStatus`, `Search`, `CheckReachability`, `CheckWithTaxAuthority` |
+| `client.Sellers` | `List`, `Get`, `GetVerificationStatus`, `Search` |
+| `client.InboundInvoices` | `List`, `Get`, `GetAnalytics`, `ListHistoryRuns`, `GetHistoryRun` |
+| `client.IssuedHistory` | `List`, `Get`, `DownloadPDF` |
+| `client.InvoiceSettings`, `client.TaxConnection` | `Get` |
+| `client.Organization` | `Get`, `GetReadiness` |
+| `client.Billing.Accounts` | `GetMine`, `GetStats`, `CheckBalance` |
+| `client.Billing.Payments` | `List`, `Get` |
+| `client.Billing.Sandbox` | `ListTransactions`, `GetUsage` |
+| `client.Billing.Statements` | `Get` |
+| `client.Billing.Subscriptions` | `GetActive`, `List`, `Get`, `ListRenewals`, `PreviewPlanChange` |
+| `client.Billing.Transactions` | `List`, `Get`, `GetUsageAnalytics`, `GetUsageByCostCode` |
+| `client.Webhooks.Endpoints` | `List`, `Get`, `Test` |
+| `client.Webhooks.Deliveries` | `List`, `Get`, `Redeliver` |
+| `client.Webhooks.Events` | `List`, `Get`, `Redeliver` |
+| `client.Webhooks.EventTypes` | `List` |
+| package `einvoice` | `VerifyWebhook`, `SignWebhookPayload`, `ComputeWebhookSignature`, `ParseSignatureHeader`, `Paginate`, `Collect` |
 
-#### `client.Submissions`
-`Submit(id, query)`, `Issue(id)`, `CreateAndSubmit(params)`, `BatchSubmit(params)`, `Retry(id)`, `Renumber(id)`, `QueryStatus(id)`, `GetStatus(id)`, `RecordPayment(id, params)`, `GetAuthorityCopy(id)`
+Account management (users, roles, API keys, purchases, webhook endpoint settings) is done in the
+Yona dashboard, not through the API key.
 
-#### `client.Output`
-`GetDownloadLink(id)`, `DownloadPDF(id)` → `*BinaryResponse`, `Send(id, params)`
+## Configuration
 
-#### `client.ShareLinks`
-`Create(invoiceID, params)`, `List(invoiceID)`, `Revoke(invoiceID, linkID)`
-
-#### `client.Items`
-`List(query)`, `Create(params)`, `Get(id)`, `Update(id, params)`, `Delete(id)`, `Archive(id)`, `Unarchive(id)`, `ListUsedCodes(query)`
-
-#### `client.Reference`
-`ListHsCodes(query)`, `ListHsCodeCategories()`, `ListResources()`, `GetResource(listType)`, `LookupTaxID(value, query)`, `ValidateInvoice(params)`
-
-#### `client.Buyers`
-`Create(params)`, `List(query)`, `Get(id)`, `Update(id, params)`, `Delete(id)`, `BulkDelete(params)`, `VerifyTaxNumber(id)`, `GetVerificationStatus(id)`, `Search(query)`, `CheckReachability(query)`, `CheckWithTaxAuthority(params)`
-
-#### `client.Sellers`
-`List(query)`, `Get(id)`, `GetVerificationStatus(id)`, `Search(query)`
-
-#### `client.InboundInvoices`
-`List(query)` → `*Paginated`, `Get(id)`, `GetAnalytics(query)`, `ListHistoryRuns(query)` → `*Paginated`, `GetHistoryRun(runID)`, `LoadOlder()` (deprecated)
-
-#### `client.IssuedHistory`
-`List(query)` → `*Paginated`, `Get(id)`, `DownloadPDF(id)` → `*BinaryResponse`
-
-#### `client.InvoiceSettings` · `client.TaxConnection`
-`Get()`
-
-#### `client.Organization`
-`Get(orgID)`, `GetReadiness()`
-
-#### `client.Billing.Accounts`
-`GetMine(query)`, `GetStats(accountID, query)` (`""` is `me`), `CheckBalance(accountID, query)`
-
-#### `client.Billing.Payments`
-`List(query)`, `Get(id)`
-
-#### `client.Billing.Sandbox`
-`ListTransactions(query)`, `GetUsage()`
-
-#### `client.Billing.Statements`
-`Get(period, query)`
-
-#### `client.Billing.Subscriptions`
-`GetActive()`, `List(query)`, `Get(id)`, `ListRenewals(query)`, `PreviewPlanChange(id, query)`
-
-#### `client.Billing.Transactions`
-`List(query)`, `Get(id)`, `GetUsageAnalytics(query)`, `GetUsageByCostCode(query)`
-
-#### `client.Webhooks.Endpoints`
-`List()`, `Get(id)`, `Test(id, params)` (nil sends `{}`)
-
-#### `client.Webhooks.Deliveries`
-`List(query)`, `Get(id)`, `Redeliver(id)`
-
-#### `client.Webhooks.Events`
-`List(query)`, `Get(id)`, `Redeliver(id, params)`
-
-#### `client.Webhooks.EventTypes`
-`List()`
-
-#### Webhook verification (package level)
-`VerifyWebhook(payload, headers, secret, ...VerifyOption)` with `WithTolerance(seconds)`, `WithNow(unix)`; `SignWebhookPayload(payload, secrets, timestamp)` (0 = now); `ComputeWebhookSignature(payload, secret, timestamp)`; `ParseSignatureHeader(header)`
-
-## Advanced: `WithBaseURL`, `WithTransport`
-
-`WithBaseURL` points the client at another gateway (a local one in development). It never changes
-the mode: the key does. Never switch hosts by mode in your own code. `WithHTTPClient` sends with
-your own `*http.Client`; `WithTransport` with anything that has `Do(*http.Request)` (a recorder in
-tests). `client.HTTP.Request(ctx, einvoice.Call{...})` makes a raw call with the SDK's envelope,
-retry and idempotency handling.
+| Option | Purpose |
+|---|---|
+| `WithTimeout(d)` | per-attempt timeout (default 30 s) |
+| `WithRetry(RetryConfig{…})` | `MaxRetries` (2), `BaseDelay` (500 ms), `MaxDelay` (8 s), `MaxRetryAfter` (60 s) |
+| `WithHeaders(map)` | headers sent on every request |
+| `WithHTTPClient(*http.Client)` | your own client (proxy, TLS) |
+| `WithBaseURL(url)` | another gateway, for local development only; the key decides sandbox or live |
 
 ## Development
 
 ```bash
-make test           # go test ./... -cover, parity and guides included
-make lint           # gofmt + go vet (+ golangci-lint when installed)
-make sync           # copy the snapshot and vectors from einvoice-js and regenerate types_gen.go (needs git + Node 22)
-make sync-check     # CI: the three must match the einvoice-js commit (or tag) pinned in scripts/sync.sh
-make guides         # examples/ → guides/guides.json (a test fails when it is stale)
-make examples       # run the examples (YONA_API_KEY; YONA_BASE_URL to point elsewhere)
-make smoke-remote   # verify your own sandbox key (see "Verifying your setup")
+make test        # go test ./... -cover
+make lint        # gofmt + go vet
+make examples    # run the examples against your sandbox key (YONA_API_KEY)
+make sync        # regenerate the typed models from the API definition
 ```
 
-The models (`types_gen.go`), the API snapshot and the webhook test vectors come from
-[`einvoice-js`](https://github.com/Elyonar/einvoice-js), the source of truth for every Yona SDK, at
-the commit (or tag) pinned in `scripts/sync.sh`; `parity_test.go` fails when a method and the
-snapshot disagree. The SDKs are versioned independently (`version.go`).
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the full setup and the release steps.
 
 ## License
 

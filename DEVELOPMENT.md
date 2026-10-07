@@ -1,4 +1,4 @@
-# Contributing to einvoice-go
+# Developing einvoice-go
 
 ## Development setup
 
@@ -23,7 +23,7 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`
 Scopes: `client`, `invoices`, `submissions`, `output`, `items`, `reference`, `inbound`, `sellers`,
 `buyers`, `billing`, `webhooks`, `organization`, `parity`, `smoke`, `types`, `config`, `deps`, `release`.
 
-## Pull requests
+## Before merging a change
 
 - `make lint` and `make test` must pass (CI runs them on Go 1.22, 1.23 and stable, plus
   `make sync-check` and `make guides-check`).
