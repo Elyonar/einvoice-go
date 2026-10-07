@@ -49,6 +49,8 @@ jobs:
       - name: Lint, build, test, sync-check, guides-check
         if: steps.tag_check.outputs.exists == 'false'
         run: make lint && go build ./... && go vet ./examples/... && make test sync-check guides-check
+        env:
+          EINVOICE_JS_TOKEN: ${{ secrets.EINVOICE_JS_TOKEN }}
 
       # A Go module is published by its tag: pkg.go.dev and the module proxy read the repository.
       - name: Create git tag

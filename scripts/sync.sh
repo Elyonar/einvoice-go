@@ -9,6 +9,7 @@
 #   EINVOICE_JS_REF=<sha|tag|branch>   the einvoice-js commit to pin (default below; bump it to take a
 #                                      new API surface — a commit SHA needs no einvoice-js release)
 #   EINVOICE_JS_DIR=../elyonar-sdk     use a local checkout instead of fetching (development only)
+#   EINVOICE_JS_TOKEN=<token>          a GitHub token that may read einvoice-js while it is private (CI: a secret)
 set -eu
 
 # einvoice-js feat/codegen-emitters (PR #7): the generator with the Go emitter, snapshot of the
@@ -28,7 +29,13 @@ else
     echo "sync: fetching einvoice-js $EINVOICE_JS_REF"
     # A shallow fetch of one ref: a SHA, a tag or a branch all work (GitHub serves reachable SHAs).
     git -C "$SRC" init --quiet
-    git -C "$SRC" fetch --quiet --depth 1 "$EINVOICE_JS_REPO" "$EINVOICE_JS_REF"
+    if [ -n "${EINVOICE_JS_TOKEN:-}" ]; then
+        # A private einvoice-js: authenticate with a token that may read it (never echoed; not in the URL).
+        AUTH="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$EINVOICE_JS_TOKEN" | base64 | tr -d '\n')"
+        git -C "$SRC" -c "http.extraheader=$AUTH" fetch --quiet --depth 1 "$EINVOICE_JS_REPO" "$EINVOICE_JS_REF"
+    else
+        git -C "$SRC" fetch --quiet --depth 1 "$EINVOICE_JS_REPO" "$EINVOICE_JS_REF"
+    fi
     git -C "$SRC" checkout --quiet FETCH_HEAD
 fi
 
