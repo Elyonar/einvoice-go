@@ -17,7 +17,7 @@ pkg.go.dev and the module proxy index the tag on first request; nothing to confi
 4. Integrators then `go get github.com/elyonar/einvoice-go@v0.1.0`.
 
 Stay on `v0.x` (no `/v2` module path suffix) until the API surface is declared stable; a `v1.0.0`
-tag is the owner's call. The SDKs are versioned independently of einvoice-js: the einvoice-js commit
+tag is the maintainer's call. The SDKs are versioned independently of einvoice-js: the einvoice-js commit
 (or tag) pinned in `scripts/sync.sh` records which JS release this one tracks.
 
 Local fallback: `git tag -a v<version> -m "Release v<version>" && git push origin v<version>`.
@@ -25,7 +25,7 @@ Local fallback: `git tag -a v<version> -m "Release v<version>" && git push origi
 ## While einvoice-js is private
 
 CI cannot fetch the pinned einvoice-js commit without a credential, so its `sync-check` job skips with a
-notice (no `EINVOICE_JS_TOKEN` secret is set; the owner chose this over storing a credential). Run the
+notice (no `EINVOICE_JS_TOKEN` secret is set; no credential is stored for it). Run the
 guard locally before every release:
 
 ```bash

@@ -35,7 +35,7 @@ Scopes: `client`, `invoices`, `submissions`, `output`, `items`, `reference`, `in
 ## While einvoice-js is private
 
 CI cannot fetch the pinned einvoice-js commit without a credential, so its `sync-check` job skips with a
-notice (no `EINVOICE_JS_TOKEN` secret is set; the owner chose this over storing a credential). Run the
+notice (no `EINVOICE_JS_TOKEN` secret is set; no credential is stored for it). Run the
 guard locally before every release:
 
 ```bash
