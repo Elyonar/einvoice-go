@@ -1,6 +1,6 @@
 {
   "sdkVersion": "0.1.0",
-  "generatedFrom": "0000000",
+  "generatedFrom": "c3f2cf4",
   "install": "go get github.com/elyonar/einvoice-go",
   "quickStart": "package main\n\nimport (\n\t\"context\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nfunc main() {\n\tctx := context.Background()\n\n\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(yona.Mode()) // \"sandbox\" for sk_test_, \"live\" for sk_live_\n\n\treadiness, err := yona.Organization.GetReadiness(ctx)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tout, _ := json.MarshalIndent(readiness, \"\", \"  \")\n\tfmt.Println(string(out))\n}",
   "recipes": [
