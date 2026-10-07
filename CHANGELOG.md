@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.1.1 (2026-10-07)
+
+### Changed
+
+- A shorter README for integrators: install, quick start, sandbox and live, responses, errors, retries,
+  webhooks, guides, the API reference and configuration. No code change.
+
 ## 0.1.0 (2026-10-07)
 
 The first release of the Go SDK, at parity with `@useyona/einvoice-js` 0.8.x: 99 methods in 23
