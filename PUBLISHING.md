@@ -21,3 +21,15 @@ tag is the owner's call. The SDKs are versioned independently of einvoice-js: th
 (or tag) pinned in `scripts/sync.sh` records which JS release this one tracks.
 
 Local fallback: `git tag -a v<version> -m "Release v<version>" && git push origin v<version>`.
+
+## While einvoice-js is private
+
+CI cannot fetch the pinned einvoice-js commit without a credential, so its `sync-check` job skips with a
+notice (no `EINVOICE_JS_TOKEN` secret is set; the owner chose this over storing a credential). Run the
+guard locally before every release:
+
+```bash
+EINVOICE_JS_DIR=../elyonar-sdk make sync-check
+```
+
+Once einvoice-js is public, the job runs in CI unchanged.

@@ -42,6 +42,13 @@ jobs:
         with:
           node-version: 22
       - name: Snapshot, vectors and generated models match einvoice-js
-        run: make sync-check
+        # einvoice-js is private: without a token that may read it the check is skipped with a notice
+        # (the fallback agreed with the owner); it then runs locally before a release (PUBLISHING.md).
         env:
           EINVOICE_JS_TOKEN: ${{ secrets.EINVOICE_JS_TOKEN }}
+        run: |
+          if [ -z "$EINVOICE_JS_TOKEN" ]; then
+            echo "::notice title=sync-check skipped::einvoice-js is private and no EINVOICE_JS_TOKEN secret is set. Run make sync-check locally (EINVOICE_JS_DIR=../elyonar-sdk) before a release."
+            exit 0
+          fi
+          make sync-check

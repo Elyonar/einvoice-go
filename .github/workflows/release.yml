@@ -46,11 +46,20 @@ jobs:
         with:
           node-version: 22
 
-      - name: Lint, build, test, sync-check, guides-check
+      - name: Lint, build, test, guides-check
         if: steps.tag_check.outputs.exists == 'false'
-        run: make lint && go build ./... && go vet ./examples/... && make test sync-check guides-check
+        run: make lint && go build ./... && go vet ./examples/... && make test guides-check
+
+      - name: Snapshot, vectors and generated models match einvoice-js
+        if: steps.tag_check.outputs.exists == 'false'
         env:
           EINVOICE_JS_TOKEN: ${{ secrets.EINVOICE_JS_TOKEN }}
+        run: |
+          if [ -z "$EINVOICE_JS_TOKEN" ]; then
+            echo "::notice title=sync-check skipped::einvoice-js is private and no EINVOICE_JS_TOKEN secret is set. Run make sync-check locally (EINVOICE_JS_DIR=../elyonar-sdk) before a release."
+            exit 0
+          fi
+          make sync-check
 
       # A Go module is published by its tag: pkg.go.dev and the module proxy read the repository.
       - name: Create git tag

@@ -31,3 +31,15 @@ Scopes: `client`, `invoices`, `submissions`, `output`, `items`, `reference`, `in
   `parityMethods` too, the reflection pass fails otherwise) and is named as einvoice-js names it, in
   Go's `PascalCase` with Go initialisms (`DownloadPDF`, `LookupTaxID`).
 - Update the README's API reference and the CHANGELOG.
+
+## While einvoice-js is private
+
+CI cannot fetch the pinned einvoice-js commit without a credential, so its `sync-check` job skips with a
+notice (no `EINVOICE_JS_TOKEN` secret is set; the owner chose this over storing a credential). Run the
+guard locally before every release:
+
+```bash
+EINVOICE_JS_DIR=../elyonar-sdk make sync-check
+```
+
+Once einvoice-js is public, the job runs in CI unchanged.
