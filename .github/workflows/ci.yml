@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ["1.22", "1.23", "stable"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Lint
+        run: make lint
+
+      - name: Build (examples included)
+        run: go build ./... && go vet ./examples/...
+
+      - name: Test
+        run: make test
+
+      - name: Guides are current
+        run: make guides-check
+
+  sync-check:
+    # The models, snapshot and vectors must be what the pinned einvoice-js commit generates.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Snapshot, vectors and generated models match einvoice-js
+        run: make sync-check

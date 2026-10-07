@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "description": "Test vectors for Yona-Signature verification, produced by the backend signer (yona-services apps/notification/src/webhooks/domain/signature.ts, signWebhookBody). Every SDK verifies these same bytes; see tests/webhooks/verify.test.ts of einvoice-js for the reference loop.",
+  "algorithm": "v1 = hex(HMAC-SHA256(key = utf8(secret), message = utf8(t) + '.' + raw body bytes)); header `Yona-Signature: t=<unix seconds>,v1=<hex>[,v1=<hex>]`; a delivery verifies when any v1 matches (constant-time compare) and |now - t| <= toleranceSeconds",
+  "secret": "whsec_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "previousSecret": "whsec_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "otherSecret": "whsec_ccccccccccccccccccccccccccccccccccccccccccc",
+  "t": 1790000000,
+  "toleranceSeconds": 300,
+  "bodyUtf8": "{\"id\":\"0199a1b2-7c3d-7e4f-8a9b-0c1d2e3f4a5d\",\"type\":\"invoice.signed\",\"version\":1,\"createdAt\":\"2026-09-30T10:15:02.123Z\",\"mode\":\"sandbox\",\"organizationId\":\"0192f0c2-11aa-7b3c-8d4e-5f6a7b8c9d0e\",\"data\":{\"invoiceId\":\"0192f3a0-0a1b-7c2d-9e3f-4a5b6c7d8e9f\",\"note\":\"naïve €\"}}",
+  "bodyBase64": "eyJpZCI6IjAxOTlhMWIyLTdjM2QtN2U0Zi04YTliLTBjMWQyZTNmNGE1ZCIsInR5cGUiOiJpbnZvaWNlLnNpZ25lZCIsInZlcnNpb24iOjEsImNyZWF0ZWRBdCI6IjIwMjYtMDktMzBUMTA6MTU6MDIuMTIzWiIsIm1vZGUiOiJzYW5kYm94Iiwib3JnYW5pemF0aW9uSWQiOiIwMTkyZjBjMi0xMWFhLTdiM2MtOGQ0ZS01ZjZhN2I4YzlkMGUiLCJkYXRhIjp7Imludm9pY2VJZCI6IjAxOTJmM2EwLTBhMWItN2MyZC05ZTNmLTRhNWI2YzdkOGU5ZiIsIm5vdGUiOiJuYcOvdmUg4oKsIn19",
+  "bodyBytes": 273,
+  "bodyReserialised": "{\n \"id\": \"0199a1b2-7c3d-7e4f-8a9b-0c1d2e3f4a5d\",\n \"type\": \"invoice.signed\",\n \"version\": 1,\n \"createdAt\": \"2026-09-30T10:15:02.123Z\",\n \"mode\": \"sandbox\",\n \"organizationId\": \"0192f0c2-11aa-7b3c-8d4e-5f6a7b8c9d0e\",\n \"data\": {\n  \"invoiceId\": \"0192f3a0-0a1b-7c2d-9e3f-4a5b6c7d8e9f\",\n  \"note\": \"naïve €\"\n }\n}",
+  "v1": "fcc88d878fdc146b973799703053806274ef1128b90bdb8497f210e1b038830a",
+  "v1Previous": "85f755e96f829ddb60feb69d25f64e99e313cd64f0cb44989a709cdaf8abf53f",
+  "header": "t=1790000000,v1=fcc88d878fdc146b973799703053806274ef1128b90bdb8497f210e1b038830a",
+  "headerRotating": "t=1790000000,v1=fcc88d878fdc146b973799703053806274ef1128b90bdb8497f210e1b038830a,v1=85f755e96f829ddb60feb69d25f64e99e313cd64f0cb44989a709cdaf8abf53f",
+  "event": {
+    "id": "0199a1b2-7c3d-7e4f-8a9b-0c1d2e3f4a5d",
+    "type": "invoice.signed",
+    "mode": "sandbox"
+  },
+  "caseFields": "secret: current | previous | other | empty; header: header | rotating | <literal>; body: utf8 | reserialised; now: unix seconds (default t); toleranceSeconds (default 300); expect: ok | signature | tolerance | parse | missing | secret",
+  "cases": [
+    {"name": "a backend-signed delivery verifies and the event is returned", "secret": "current", "header": "header", "now": 1790000010, "expect": "ok"},
+    {"name": "the rotating header verifies with the current secret", "secret": "current", "header": "rotating", "expect": "ok"},
+    {"name": "the rotating header verifies with the previous secret", "secret": "previous", "header": "rotating", "expect": "ok"},
+    {"name": "a third secret does not verify", "secret": "other", "header": "rotating", "expect": "signature"},
+    {"name": "t + 300 s is inside the tolerance", "secret": "current", "header": "header", "now": 1790000300, "expect": "ok"},
+    {"name": "t + 301 s is outside the tolerance", "secret": "current", "header": "header", "now": 1790000301, "expect": "tolerance"},
+    {"name": "t - 301 s is outside the tolerance", "secret": "current", "header": "header", "now": 1789999699, "expect": "tolerance"},
+    {"name": "a wider tolerance accepts t + 900 s", "secret": "current", "header": "header", "now": 1790000900, "toleranceSeconds": 1000, "expect": "ok"},
+    {"name": "a re-serialised body does not verify (it is not the bytes that were signed)", "secret": "current", "header": "header", "body": "reserialised", "expect": "signature"},
+    {"name": "a missing header is refused", "secret": "current", "header": "", "expect": "missing"},
+    {"name": "a header without t is refused", "secret": "current", "header": "v1=abc", "expect": "parse"},
+    {"name": "a header without v1 is refused", "secret": "current", "header": "t=1790000000", "expect": "parse"},
+    {"name": "a header with a non-integer t is refused", "secret": "current", "header": "t=1.5,v1=aa", "expect": "parse"},
+    {"name": "an empty secret is refused", "secret": "empty", "header": "header", "expect": "secret"}
+  ],
+  "parseHeader": [
+    {"header": "t=1790000000,v0=old,junk,v1=aa,v1=bb", "timestamp": 1790000000, "signatures": ["aa", "bb"]}
+  ]
+}

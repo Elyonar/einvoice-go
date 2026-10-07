@@ -1,0 +1,8 @@
+coverage.out
+coverage.html
+*.test
+*.out
+/bin/
+/dist/
+.env
+.DS_Store

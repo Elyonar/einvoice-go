@@ -1,0 +1,355 @@
+{
+  "sdkVersion": "0.1.0",
+  "generatedFrom": "0000000",
+  "install": "go get github.com/elyonar/einvoice-go",
+  "quickStart": "package main\n\nimport (\n\t\"context\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nfunc main() {\n\tctx := context.Background()\n\n\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(yona.Mode()) // \"sandbox\" for sk_test_, \"live\" for sk_live_\n\n\treadiness, err := yona.Organization.GetReadiness(ctx)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tout, _ := json.MarshalIndent(readiness, \"\", \"  \")\n\tfmt.Println(string(out))\n}",
+  "recipes": [
+    {
+      "id": "first-invoice",
+      "title": "Your first invoice",
+      "summary": "Create a buyer and an item, draft an invoice, finalise it, submit it to the tax authority, follow its status and download the PDF and the QR payload.",
+      "steps": [
+        {
+          "id": "client",
+          "title": "Create the client",
+          "text": "Pass only your API key. An sk_test_ key works in sandbox and an sk_live_ key in live, on the same host.",
+          "sdk": "package main\n\nimport (\n\t\"context\"\n\t\"crypto/rand\"\n\t\"encoding/hex\"\n\t\"errors\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\t\"path/filepath\"\n\t\"time\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nfunc main() {\n\tctx := context.Background()\n\n\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\trefBytes := make([]byte, 4)\n\t_, _ = rand.Read(refBytes)\n\tref := hex.EncodeToString(refBytes)",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "create-buyer",
+          "title": "Create a buyer",
+          "text": "A buyer is the party you invoice. A B2B buyer carries its tax id (TIN), which the tax authority checks on submission. A TIN is unique per organisation: on 409 RES002, reuse the buyer you already have.",
+          "sdk": "\ttaxID := \"33875194-0001\"\n\tbuyer, err := yona.Buyers.Create(ctx, &einvoice.CreateBuyerBody{\n\t\tName:      \"Acme Nigeria Ltd \" + ref,\n\t\tPartyType: einvoice.Ptr(einvoice.CreateBuyerDtoPartyTypeCompany),\n\t\tTaxID:     einvoice.Ptr(taxID),\n\t\tEmail:     einvoice.Ptr(\"accounts.\" + ref + \"@example.com\"),\n\t\tAddress:   &einvoice.BuyerAddressDto{Line1: \"1 Marina\", City: \"Lagos\", Country: \"NG\"},\n\t})\n\tvar conflict *einvoice.ConflictError\n\tif errors.As(err, &conflict) && conflict.ErrorCode == \"RES002\" {\n\t\tfound, listErr := yona.Buyers.List(ctx, &einvoice.ListBuyersQuery{Search: einvoice.Ptr(taxID), Limit: einvoice.Ptr(1.0)})\n\t\tif listErr != nil || len(found.Data) == 0 {\n\t\t\tlog.Fatal(err)\n\t\t}\n\t\tbuyer, err = &found.Data[0], nil\n\t}\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"buyer\", buyer.ID)",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/buyers\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"string\"\n}'",
+          "operationId": "createBuyer"
+        },
+        {
+          "id": "find-hs-code",
+          "title": "Find an HS code",
+          "text": "Goods carry an HS code. Search the reference list for one that fits your product.",
+          "sdk": "\thsCodes, err := yona.Reference.ListHsCodes(ctx, &einvoice.ListHsCodesQuery{Limit: einvoice.Ptr(1.0)})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\thsnCode := \"8471.30\"\n\tif len(hsCodes.Data) > 0 {\n\t\thsnCode = hsCodes.Data[0].Code\n\t}",
+          "curl": "curl \"https://gp.useyona.com/i/v1/invoices/hsn-codes\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listHsCodes"
+        },
+        {
+          "id": "create-item",
+          "title": "Create an item",
+          "text": "Save what you sell once and reuse it on every invoice. Amounts are integer minor units (kobo for NGN), sent as strings.",
+          "sdk": "\titem, err := yona.Items.Create(ctx, &einvoice.CreateItemBody{\n\t\tName:            \"Laptop \" + ref,\n\t\tItemType:        einvoice.CreateItemDtoItemTypeGoods,\n\t\tHSNCode:         einvoice.Ptr(hsnCode),\n\t\tProductCategory: \"Machinery\",\n\t\tUnitCode:        \"EA\",\n\t\tUnitPriceMinor:  \"150000000\",\n\t\tCurrency:        \"NGN\",\n\t\tTaxCategory:     \"STANDARD_VAT\",\n\t\tSKU:             einvoice.Ptr(\"LAPTOP-\" + ref),\n\t})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"item\", item.ID)",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/items\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"Consulting hour\",\n  \"itemType\": \"service\",\n  \"productCategory\": \"Machinery\",\n  \"unitCode\": \"EA\",\n  \"unitPriceMinor\": \"150050\",\n  \"currency\": \"NGN\",\n  \"taxCategory\": \"STANDARD_VAT\"\n}'",
+          "operationId": "createItem"
+        },
+        {
+          "id": "create-invoice",
+          "title": "Draft the invoice",
+          "text": "A draft can be edited freely. The SDK sends an Idempotency-Key, so a retried create is never charged twice.",
+          "sdk": "\tdraft, err := yona.Invoices.Create(ctx, &einvoice.CreateInvoiceBody{\n\t\tInvoiceKind: \"B2B\",\n\t\tInvoiceDate: time.Now().Format(\"2006-01-02\"),\n\t\tCurrency:    \"NGN\",\n\t\tBuyerID:     einvoice.Ptr(buyer.ID),\n\t\tLineItems:   []einvoice.InvoiceLineItemDto{{ItemID: einvoice.Ptr(item.ID), Quantity: einvoice.AmountNumber(2)}},\n\t})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"draft\", draft.InvoiceNumber, draft.Totals.PayableMinor)",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/invoices\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"invoiceKind\": \"B2B\",\n  \"invoiceDate\": \"2026-09-30\",\n  \"currency\": \"NGN\",\n  \"lineItems\": [\n    {\n      \"quantity\": \"2.5\"\n    }\n  ]\n}'",
+          "operationId": "createInvoice"
+        },
+        {
+          "id": "finalise",
+          "title": "Finalise it",
+          "text": "Finalising freezes the seller and buyer onto the invoice and runs the jurisdiction's checks.",
+          "sdk": "\tfinalised, err := yona.Invoices.Finalise(ctx, draft.ID)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"finalised\", finalised.Status)",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/invoices/{id}/finalise\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "finaliseInvoice"
+        },
+        {
+          "id": "submit",
+          "title": "Submit it to the tax authority",
+          "text": "Submission is asynchronous: the answer is the queued submission. Webhooks tell you when it settles.",
+          "sdk": "\tsubmitted, err := yona.Submissions.Submit(ctx, draft.ID, nil)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"submitted\", submitted.Invoice.Status)",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/invoices/{id}/submit\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Idempotency-Key: $(uuidgen)\"",
+          "operationId": "submitInvoice"
+        },
+        {
+          "id": "wait",
+          "title": "Wait for the outcome",
+          "text": "Poll the status as last recorded (or listen for invoice.accepted / invoice.rejected webhooks).",
+          "sdk": "\tsettled := map[einvoice.SubmissionStatusDtoStatus]bool{\n\t\teinvoice.SubmissionStatusDtoStatusSigned:      true,\n\t\teinvoice.SubmissionStatusDtoStatusTransmitted: true,\n\t\teinvoice.SubmissionStatusDtoStatusAccepted:    true,\n\t\teinvoice.SubmissionStatusDtoStatusRejected:    true,\n\t\teinvoice.SubmissionStatusDtoStatusFailed:      true,\n\t}\n\tstatus, err := yona.Submissions.GetStatus(ctx, draft.ID)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfor i := 0; i < 45 && !settled[status.Status]; i++ {\n\t\ttime.Sleep(2 * time.Second)\n\t\tif status, err = yona.Submissions.GetStatus(ctx, draft.ID); err != nil {\n\t\t\tlog.Fatal(err)\n\t\t}\n\t}\n\treference := \"\"\n\tif status.AuthorityReference != nil {\n\t\treference = *status.AuthorityReference\n\t}\n\tfmt.Println(\"status\", status.Status, reference)",
+          "curl": "curl \"https://gp.useyona.com/i/v1/invoices/{id}/status\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "getInvoiceStatus"
+        },
+        {
+          "id": "query-status",
+          "title": "Ask the tax authority directly",
+          "text": "QueryStatus asks the authority now instead of reading the last recorded state.",
+          "sdk": "\tlive, err := yona.Submissions.QueryStatus(ctx, draft.ID)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tauthorityState := \"\"\n\tif live.AuthorityState != nil {\n\t\tauthorityState = string(*live.AuthorityState)\n\t}\n\tfmt.Println(\"authority says\", live.Status, authorityState)",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/invoices/{id}/query-status\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Idempotency-Key: $(uuidgen)\"",
+          "operationId": "queryInvoiceStatus"
+        },
+        {
+          "id": "download-pdf",
+          "title": "Download the PDF",
+          "text": "The PDF comes back as bytes in a BinaryResponse. GetDownloadLink returns a short-lived URL instead.",
+          "sdk": "\tpdf, err := yona.Output.DownloadPDF(ctx, draft.ID)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tname := pdf.FileName\n\tif name == \"\" {\n\t\tname = draft.InvoiceNumber + \".pdf\"\n\t}\n\tfile := filepath.Join(os.TempDir(), name)\n\tif err := os.WriteFile(file, pdf.Data, 0o644); err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"pdf\", file, len(pdf.Data), \"bytes\")",
+          "curl": "curl \"https://gp.useyona.com/i/v1/invoices/{id}/download\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "downloadInvoice"
+        },
+        {
+          "id": "qr",
+          "title": "Read the QR payload",
+          "text": "Once registered, the invoice carries the verification payload to print as its QR code.",
+          "sdk": "\tinvoice, err := yona.Invoices.Get(ctx, draft.ID)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tif invoice.Verification != nil {\n\t\tfmt.Printf(\"qr %d chars\\n\", len(invoice.Verification.Payload))\n\t} else {\n\t\tfmt.Println(\"qr not registered yet\")\n\t}\n}",
+          "curl": "curl \"https://gp.useyona.com/i/v1/invoices/{id}\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "getInvoice"
+        }
+      ]
+    },
+    {
+      "id": "webhooks",
+      "title": "Receive webhooks",
+      "summary": "Verify the Yona-Signature of each delivery over the raw body, dispatch by event type, and inspect deliveries with the SDK. Endpoints are registered in the dashboard: an API key can read and test them, not create them.",
+      "steps": [
+        {
+          "id": "secret",
+          "title": "Keep the endpoint secret",
+          "text": "Register your endpoint URL in the dashboard (Developers, Webhooks); it shows the signing secret (whsec_…) once. Keep it in your environment.",
+          "sdk": "package main\n\nimport (\n\t\"bytes\"\n\t\"context\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"io\"\n\t\"log\"\n\t\"net\"\n\t\"net/http\"\n\t\"os\"\n\t\"time\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nfunc main() {\n\tctx := context.Background()\n\n\tsecret := os.Getenv(\"YONA_WEBHOOK_SECRET\")\n\tif secret == \"\" {\n\t\tsecret = \"whsec_local_example_secret\"\n\t}",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "read-raw-body",
+          "title": "Read the raw body",
+          "text": "The signature covers the exact bytes Yona sent. Read the body as bytes; never verify a re-serialised object.",
+          "sdk": "\treadRawBody := func(r *http.Request) ([]byte, error) {\n\t\tdefer r.Body.Close()\n\t\treturn io.ReadAll(r.Body)\n\t}",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "dispatch",
+          "title": "Dispatch by event type",
+          "text": "Deduplicate on event.ID: a redelivery carries the same id. Answer 2xx quickly and do slow work afterwards.",
+          "sdk": "\tseen := map[string]bool{}\n\thandleEvent := func(event *einvoice.WebhookEvent) {\n\t\tif seen[event.ID] {\n\t\t\treturn\n\t\t}\n\t\tseen[event.ID] = true\n\t\tvar data struct {\n\t\t\tInvoiceID string `json:\"invoiceId\"`\n\t\t}\n\t\t_ = event.DecodeData(&data)\n\t\tswitch event.Type {\n\t\tcase einvoice.WebhookEventInvoiceAccepted:\n\t\t\tfmt.Println(\"accepted\", data.InvoiceID)\n\t\tcase einvoice.WebhookEventInvoiceRejected:\n\t\t\tfmt.Println(\"rejected\", data.InvoiceID)\n\t\tcase einvoice.WebhookEventInvoiceReceived:\n\t\t\tfmt.Println(\"a supplier sent you an invoice\")\n\t\tdefault:\n\t\t\tfmt.Println(\"ignored\", event.Type)\n\t\t}\n\t}",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "handler",
+          "title": "Verify every delivery",
+          "text": "VerifyWebhook checks the HMAC-SHA256 signature and the timestamp (±300 s) and returns the parsed event. Refuse anything it rejects with 400.",
+          "sdk": "\tmux := http.NewServeMux()\n\tmux.HandleFunc(\"/webhooks/yona\", func(w http.ResponseWriter, r *http.Request) {\n\t\tif r.Method != http.MethodPost {\n\t\t\thttp.NotFound(w, r)\n\t\t\treturn\n\t\t}\n\t\traw, err := readRawBody(r)\n\t\tif err != nil {\n\t\t\thttp.Error(w, \"unreadable body\", http.StatusBadRequest)\n\t\t\treturn\n\t\t}\n\t\tevent, err := einvoice.VerifyWebhook(raw, r.Header, secret)\n\t\tif err != nil {\n\t\t\thttp.Error(w, \"invalid signature\", http.StatusBadRequest)\n\t\t\treturn\n\t\t}\n\t\tw.WriteHeader(http.StatusOK)\n\t\tfmt.Fprint(w, \"ok\")\n\t\thandleEvent(event)\n\t})\n\tlistener, err := net.Listen(\"tcp\", \"127.0.0.1:0\")\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tserver := &http.Server{Handler: mux}\n\tgo func() { _ = server.Serve(listener) }()\n\turl := \"http://\" + listener.Addr().String() + \"/webhooks/yona\"",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "test-locally",
+          "title": "Test your handler locally",
+          "text": "SignWebhookPayload signs a payload exactly as Yona does, so you can exercise the handler before going live. A tampered body is refused.",
+          "sdk": "\tbody, _ := json.Marshal(map[string]any{\n\t\t\"id\": \"evt_local_1\", \"type\": \"invoice.accepted\", \"version\": 1, \"createdAt\": time.Now().UTC().Format(time.RFC3339),\n\t\t\"mode\": \"sandbox\", \"organizationId\": \"org_local\", \"data\": map[string]any{\"invoiceId\": \"inv_local\"}, \"test\": true,\n\t})\n\tdeliver := func(payload []byte) int {\n\t\treq, _ := http.NewRequest(http.MethodPost, url, bytes.NewReader(payload))\n\t\treq.Header.Set(einvoice.WebhookSignatureHeader, einvoice.SignWebhookPayload(body, []string{secret}, 0))\n\t\tres, err := http.DefaultClient.Do(req)\n\t\tif err != nil {\n\t\t\tlog.Fatal(err)\n\t\t}\n\t\tres.Body.Close()\n\t\treturn res.StatusCode\n\t}\n\tsigned := deliver(body)\n\ttampered := deliver(bytes.Replace(body, []byte(\"accepted\"), []byte(\"rejected\"), 1))\n\tfmt.Println(\"signed delivery\", signed, \"| tampered delivery\", tampered)\n\tif signed != http.StatusOK || tampered != http.StatusBadRequest {\n\t\tlog.Fatal(\"the handler did not verify as expected\")\n\t}\n\t_ = server.Shutdown(ctx)",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "list-endpoints",
+          "title": "List your endpoints",
+          "text": "The key reads the endpoints registered for its organisation and mode.",
+          "sdk": "\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tendpoints, err := yona.Webhooks.Endpoints.List(ctx)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"endpoints\", len(endpoints))",
+          "curl": "curl \"https://gp.useyona.com/n/v1/webhook-endpoints\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listWebhookEndpoints"
+        },
+        {
+          "id": "list-deliveries",
+          "title": "Inspect deliveries",
+          "text": "Every delivery and its status: delivered, retrying or failed with the reason.",
+          "sdk": "\tdeliveries, err := yona.Webhooks.Deliveries.List(ctx, &einvoice.ListWebhookDeliveriesQuery{Limit: einvoice.Ptr(int64(10))})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfor _, d := range deliveries.Data {\n\t\tlastStatus := \"-\"\n\t\tif d.LastHTTPStatus != nil {\n\t\t\tlastStatus = fmt.Sprint(*d.LastHTTPStatus)\n\t\t}\n\t\tfmt.Println(d.Type, d.Status, lastStatus)\n\t}",
+          "curl": "curl \"https://gp.useyona.com/n/v1/webhook-deliveries\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listWebhookDeliveries"
+        },
+        {
+          "id": "redeliver",
+          "title": "Redeliver a failed delivery",
+          "text": "After fixing your endpoint, ask for one more attempt.",
+          "sdk": "\tredelivered := \"nothing to redeliver\"\n\tfor _, d := range deliveries.Data {\n\t\tif d.Status == einvoice.WebhookDeliveryDtoStatusFailed {\n\t\t\tif _, err := yona.Webhooks.Deliveries.Redeliver(ctx, d.ID); err != nil {\n\t\t\t\tlog.Fatal(err)\n\t\t\t}\n\t\t\tredelivered = d.ID\n\t\t\tbreak\n\t\t}\n\t}\n\tfmt.Println(\"redelivered\", redelivered)\n}",
+          "curl": "curl -X POST \"https://gp.useyona.com/n/v1/webhook-deliveries/{id}/redeliver\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "redeliverWebhookDelivery"
+        }
+      ]
+    },
+    {
+      "id": "errors-and-retries",
+      "title": "Errors and safe retries",
+      "summary": "Catch the SDK's typed errors, branch on ErrorCode, quote the RequestID to support, honour RetryAfter, and use idempotency keys so a retried write is never applied or charged twice.",
+      "steps": [
+        {
+          "id": "client",
+          "title": "Configure retries",
+          "text": "The SDK retries GET, PUT and DELETE, and writes that carry an Idempotency-Key, on network errors, timeouts, 408, 429 and 5xx. Other writes are never retried for you.",
+          "sdk": "package main\n\nimport (\n\t\"context\"\n\t\"errors\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\t\"time\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nfunc main() {\n\tctx := context.Background()\n\n\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"),\n\t\teinvoice.WithTimeout(30*time.Second),\n\t\teinvoice.WithRetry(einvoice.RetryConfig{MaxRetries: einvoice.Ptr(3), BaseDelay: 500 * time.Millisecond, MaxRetryAfter: 30 * time.Second}),\n\t)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "validation",
+          "title": "Read a validation error",
+          "text": "A 400 or 422 is a *ValidationError. Branch on ErrorCode, show Errors per field, and keep RequestID for support.",
+          "sdk": "\t_, err = yona.Invoices.Create(ctx, &einvoice.CreateInvoiceBody{InvoiceKind: \"B2B\", InvoiceDate: \"2026-10-05\", Currency: \"NGN\", LineItems: []einvoice.InvoiceLineItemDto{}})\n\tvar validation *einvoice.ValidationError\n\tif !errors.As(err, &validation) {\n\t\tlog.Fatal(\"expected a validation error, got \", err)\n\t}\n\tfmt.Println(validation.Status, validation.ErrorCode, validation.RequestID)\n\tfor _, e := range validation.Errors {\n\t\tfmt.Printf(\"  %s: %s\\n\", e.Field, e.Message)\n\t}",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/invoices\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"invoiceKind\": \"B2B\",\n  \"invoiceDate\": \"2026-09-30\",\n  \"currency\": \"NGN\",\n  \"lineItems\": [\n    {\n      \"quantity\": \"2.5\"\n    }\n  ]\n}'",
+          "operationId": "createInvoice"
+        },
+        {
+          "id": "not-found",
+          "title": "Handle a missing resource",
+          "text": "Every API error unwraps to *APIError, so one errors.As can handle them all; narrow by type first.",
+          "sdk": "\t_, err = yona.Invoices.Get(ctx, \"0192f3a0-0000-7000-8000-000000000000\")\n\tvar notFound *einvoice.NotFoundError\n\tvar apiErr *einvoice.APIError\n\tswitch {\n\tcase errors.As(err, &notFound):\n\t\tfmt.Println(\"not found\", notFound.ErrorCode, notFound.RequestID)\n\tcase errors.As(err, &apiErr):\n\t\tfmt.Println(\"refused\", apiErr.Status, apiErr.ErrorCode)\n\tdefault:\n\t\tlog.Fatal(\"expected a not-found error, got \", err)\n\t}",
+          "curl": "curl \"https://gp.useyona.com/i/v1/invoices/{id}\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "getInvoice"
+        },
+        {
+          "id": "idempotency",
+          "title": "Make a write safe to retry",
+          "text": "Pass your own idempotency key (stored with your order, for example) so a retry after a crash or a timeout returns the first result instead of creating a second invoice.",
+          "sdk": "\tidempotencyKey := \"order-\" + einvoice.GenerateIdempotencyKey()\n\tparams := &einvoice.CreateInvoiceBody{\n\t\tInvoiceKind: \"B2C\",\n\t\tInvoiceDate: time.Now().Format(\"2006-01-02\"),\n\t\tCurrency:    \"NGN\",\n\t\tLineItems: []einvoice.InvoiceLineItemDto{{\n\t\t\tItemName:        einvoice.Ptr(\"Consulting hour\"),\n\t\t\tDescription:     einvoice.Ptr(\"Consulting hour\"),\n\t\t\tUnitCode:        einvoice.Ptr(\"EA\"),\n\t\t\tQuantity:        einvoice.AmountNumber(1),\n\t\t\tUnitPrice:       einvoice.Ptr(einvoice.AmountString(\"25000.00\")),\n\t\t\tTaxCategory:     einvoice.Ptr(\"STANDARD_VAT\"),\n\t\t\tISICCode:        einvoice.Ptr(\"6201\"),\n\t\t\tServiceCategory: einvoice.Ptr(\"Professional services\"),\n\t\t}},\n\t}\n\tfirst, err := yona.Invoices.Create(ctx, params, einvoice.WithIdempotencyKey(idempotencyKey))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tagain, err := yona.Invoices.Create(ctx, params, einvoice.WithIdempotencyKey(idempotencyKey))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"same invoice on retry:\", first.ID == again.ID)\n\tif first.ID != again.ID {\n\t\tlog.Fatal(\"an idempotent retry created a second invoice\")\n\t}",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/invoices\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"invoiceKind\": \"B2B\",\n  \"invoiceDate\": \"2026-09-30\",\n  \"currency\": \"NGN\",\n  \"lineItems\": [\n    {\n      \"quantity\": \"2.5\"\n    }\n  ]\n}'",
+          "operationId": "createInvoice"
+        },
+        {
+          "id": "retry-after",
+          "title": "Wait out a rate limit",
+          "text": "When the SDK's own retries are exhausted, a 429 or 503 carries RetryAfter (seconds). Retry only what is safe: reads, or writes with an idempotency key.",
+          "sdk": "\twithRetry := func(call func() (*einvoice.Page[einvoice.ListInvoicesItem], error), attempts int) (*einvoice.Page[einvoice.ListInvoicesItem], error) {\n\t\tfor attempt := 1; ; attempt++ {\n\t\t\tpage, err := call()\n\t\t\tvar rateLimited *einvoice.RateLimitError\n\t\t\tvar server *einvoice.ServerError\n\t\t\tvar timeout *einvoice.TimeoutError\n\t\t\tvar connection *einvoice.ConnectionError\n\t\t\ttransient := errors.As(err, &rateLimited) || errors.As(err, &server) || errors.As(err, &timeout) || errors.As(err, &connection)\n\t\t\tif err == nil || !transient || attempt >= attempts {\n\t\t\t\treturn page, err\n\t\t\t}\n\t\t\tseconds := 1 << attempt\n\t\t\tvar refusal *einvoice.APIError\n\t\t\tif errors.As(err, &refusal) && refusal.RetryAfter > 0 {\n\t\t\t\tseconds = refusal.RetryAfter\n\t\t\t}\n\t\t\ttime.Sleep(time.Duration(seconds) * time.Second)\n\t\t}\n\t}\n\tpage, err := withRetry(func() (*einvoice.Page[einvoice.ListInvoicesItem], error) {\n\t\treturn yona.Invoices.List(ctx, &einvoice.ListInvoicesQuery{Limit: einvoice.Ptr(5.0)})\n\t}, 3)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"invoices\", page.Pagination.Total, \"request\", page.RequestID)",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "cleanup",
+          "title": "Delete the draft",
+          "text": "Drafts can be deleted; their number is never reused.",
+          "sdk": "\tif _, err := yona.Invoices.Delete(ctx, first.ID); err != nil {\n\t\tlog.Fatal(err)\n\t}\n}",
+          "curl": "curl -X DELETE \"https://gp.useyona.com/i/v1/invoices/{id}\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "deleteInvoice"
+        }
+      ]
+    },
+    {
+      "id": "sandbox-and-live",
+      "title": "Sandbox and live",
+      "summary": "The key decides the mode: an sk_test_ key works in sandbox and an sk_live_ key in live, on the same host. Going live changes only the key.",
+      "steps": [
+        {
+          "id": "client",
+          "title": "Create the client and read its mode",
+          "text": "There is no host or mode to configure. The SDK reads the mode from the key prefix.",
+          "sdk": "package main\n\nimport (\n\t\"context\"\n\t\"encoding/json\"\n\t\"errors\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nfunc main() {\n\tctx := context.Background()\n\n\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(yona.Mode()) // \"sandbox\" for sk_test_, \"live\" for sk_live_",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "first-call",
+          "title": "Make your first call",
+          "text": "The readiness check lists what your organisation still needs before it can invoice in this mode.",
+          "sdk": "\treadiness, err := yona.Organization.GetReadiness(ctx)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tout, _ := json.MarshalIndent(readiness, \"\", \"  \")\n\tfmt.Println(string(out))",
+          "curl": "curl \"https://gp.useyona.com/a/v1/organizations/me/readiness\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "getOrganizationReadiness"
+        },
+        {
+          "id": "assert-mode",
+          "title": "Guard against the wrong key",
+          "text": "Pass WithAssertMode so a deployment refuses to start with a key of the other mode. The error never echoes the key.",
+          "sdk": "\tother := einvoice.ModeLive\n\tif yona.Mode() == einvoice.ModeLive {\n\t\tother = einvoice.ModeSandbox\n\t}\n\t_, err = einvoice.New(os.Getenv(\"YONA_API_KEY\"), einvoice.WithAssertMode(other))\n\tvar refused *einvoice.ConfigError\n\tif !errors.As(err, &refused) {\n\t\tlog.Fatal(\"WithAssertMode did not refuse a key of the other mode\")\n\t}\n\tfmt.Println(\"refused:\", refused.Message)",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "sandbox-allowance",
+          "title": "See your sandbox allowance",
+          "text": "Sandbox invoices are free within an allowance; submissions go to the tax authority's sandbox, never to the live register.",
+          "sdk": "\tif yona.Mode() == einvoice.ModeSandbox {\n\t\tusage, err := yona.Billing.Sandbox.GetUsage(ctx)\n\t\tif err != nil {\n\t\t\tlog.Fatal(err)\n\t\t}\n\t\tfmt.Println(\"sandbox credits\", usage.CreditsUsed, \"used of\", usage.CreditsLimit, \"until\", usage.PeriodEnd)\n\t}",
+          "curl": "curl \"https://gp.useyona.com/b/v1/sandbox/usage\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "getSandboxUsage"
+        },
+        {
+          "id": "tax-connection",
+          "title": "Check the tax connection",
+          "text": "Each mode has its own connection to the tax authority. Live needs the organisation approved for live and its live connection made in the dashboard.",
+          "sdk": "\tconnection, err := yona.TaxConnection.Get(ctx)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"tax connection\", connection.Mode, connection.Kind, connection.State)",
+          "curl": "curl \"https://gp.useyona.com/i/v1/tax-connection\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "getTaxConnection"
+        },
+        {
+          "id": "go-live",
+          "title": "Go live",
+          "text": "Create a live key in the dashboard and deploy it as YONA_API_KEY in place of the test key. Nothing else in your code changes: the same calls, the same host.",
+          "sdk": "\tclient, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tif client.Mode() == einvoice.ModeLive {\n\t\tfmt.Println(\"live: submissions are reported to the tax authority\")\n\t} else {\n\t\tfmt.Println(\"sandbox: deploy an sk_live_ key to go live\")\n\t}\n}",
+          "curl": null,
+          "operationId": null
+        }
+      ]
+    },
+    {
+      "id": "received-invoices",
+      "title": "Received invoices",
+      "summary": "List the invoices other businesses issued to you, filter them, and walk every page with Paginate.",
+      "steps": [
+        {
+          "id": "client",
+          "title": "Create the client",
+          "text": null,
+          "sdk": "package main\n\nimport (\n\t\"context\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\n// text prints an optional string field: its value, or \"-\" when the API sent null.\nfunc text(p *string) string {\n\tif p == nil {\n\t\treturn \"-\"\n\t}\n\treturn *p\n}\n\nfunc main() {\n\tctx := context.Background()\n\n\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "connection",
+          "title": "Check the tax connection",
+          "text": "Received invoices arrive through your connection to the tax authority; until it is connected the list is empty.",
+          "sdk": "\tconnection, err := yona.TaxConnection.Get(ctx)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"tax connection\", connection.Mode, connection.Kind, connection.State)",
+          "curl": "curl \"https://gp.useyona.com/i/v1/tax-connection\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "getTaxConnection"
+        },
+        {
+          "id": "list",
+          "title": "Read the first page",
+          "text": "Newest first. Sync tells you whether the mirror is still filling (Syncing) and when it last read the tax authority.",
+          "sdk": "\tfirst, err := yona.InboundInvoices.List(ctx, &einvoice.ListInboundInvoicesQuery{Limit: einvoice.Ptr(20.0)})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\ttotal := int64(len(first.Data.Items))\n\tif first.Pagination != nil {\n\t\ttotal = first.Pagination.Total\n\t}\n\tfmt.Println(\"received\", total, \"syncing\", first.Data.Sync.Syncing)\n\tfor _, inv := range first.Data.Items {\n\t\tsupplier := inv.SupplierName\n\t\tif supplier == nil {\n\t\t\tsupplier = inv.SupplierTIN\n\t\t}\n\t\tpayable := 0.0\n\t\tif inv.PayableAmountMinor != nil {\n\t\t\tpayable = *inv.PayableAmountMinor\n\t\t}\n\t\tfmt.Println(inv.Irn, text(supplier), payable, text(inv.Currency), inv.PaymentStatus)\n\t}",
+          "curl": "curl \"https://gp.useyona.com/i/v1/inbound-invoices\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listInboundInvoices"
+        },
+        {
+          "id": "filter",
+          "title": "Filter",
+          "text": "Filter by seller name or TIN, payment status, issue date, amount or currency.",
+          "sdk": "\tunpaid, err := yona.InboundInvoices.List(ctx, &einvoice.ListInboundInvoicesQuery{\n\t\tPaymentStatus: einvoice.Ptr(einvoice.ListInboundInvoicesQueryPaymentStatusUnpaid),\n\t\tSort:          einvoice.Ptr(einvoice.ListInboundInvoicesQuerySortDescIssueDate),\n\t\tLimit:         einvoice.Ptr(20.0),\n\t})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"unpaid on this page\", len(unpaid.Data.Items))",
+          "curl": "curl \"https://gp.useyona.com/i/v1/inbound-invoices\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listInboundInvoices"
+        },
+        {
+          "id": "paginate",
+          "title": "Walk every page",
+          "text": "Paginate fetches page after page for you. Received invoices return an object with Items, so map each page to its items.",
+          "sdk": "\tcount := 0\n\tquery := &einvoice.ListInboundInvoicesQuery{Limit: einvoice.Ptr(50.0)}\n\terr = einvoice.Paginate(ctx, func(ctx context.Context, page int64) (*einvoice.Page[einvoice.InboundInvoiceViewDto], error) {\n\t\tquery.Page = einvoice.Ptr(float64(page))\n\t\tres, err := yona.InboundInvoices.List(ctx, query)\n\t\tif err != nil {\n\t\t\treturn nil, err\n\t\t}\n\t\tout := &einvoice.Page[einvoice.InboundInvoiceViewDto]{Data: res.Data.Items, RequestID: res.RequestID}\n\t\tif res.Pagination != nil {\n\t\t\tout.Pagination = *res.Pagination\n\t\t}\n\t\treturn out, nil\n\t}, func(inv einvoice.InboundInvoiceViewDto) error {\n\t\tcount++\n\t\tif count <= 3 {\n\t\t\tfmt.Println(inv.Irn)\n\t\t}\n\t\treturn nil\n\t})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"walked\", count, \"received invoices\")",
+          "curl": "curl \"https://gp.useyona.com/i/v1/inbound-invoices\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listInboundInvoices"
+        },
+        {
+          "id": "detail",
+          "title": "Open one",
+          "text": null,
+          "sdk": "\tif len(first.Data.Items) > 0 {\n\t\tone, err := yona.InboundInvoices.Get(ctx, first.Data.Items[0].ID)\n\t\tif err != nil {\n\t\t\tlog.Fatal(err)\n\t\t}\n\t\tdetail, _ := json.MarshalIndent(one, \"\", \"  \")\n\t\tfmt.Println(string(detail))\n\t}",
+          "curl": "curl \"https://gp.useyona.com/i/v1/inbound-invoices/{id}\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "getInboundInvoice"
+        },
+        {
+          "id": "analytics",
+          "title": "Summarise",
+          "text": "Totals by status and seller for a period.",
+          "sdk": "\tanalytics, err := yona.InboundInvoices.GetAnalytics(ctx, nil)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tsummary, _ := json.MarshalIndent(analytics, \"\", \"  \")\n\tfmt.Println(string(summary))",
+          "curl": "curl \"https://gp.useyona.com/i/v1/inbound-invoices/analytics\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "getInboundInvoiceAnalytics"
+        },
+        {
+          "id": "paginate-buyers",
+          "title": "The same for any list",
+          "text": "Every list method returns a Page with Data and Pagination, so Paginate (or Collect) works on it directly.",
+          "sdk": "\tbuyersQuery := &einvoice.ListBuyersQuery{Limit: einvoice.Ptr(100.0)}\n\tbuyers, err := einvoice.Collect(ctx, func(ctx context.Context, page int64) (*einvoice.Page[einvoice.BuyerViewDto], error) {\n\t\tbuyersQuery.Page = einvoice.Ptr(float64(page))\n\t\treturn yona.Buyers.List(ctx, buyersQuery)\n\t})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"buyers\", len(buyers))\n}",
+          "curl": "curl \"https://gp.useyona.com/i/v1/buyers\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listBuyers"
+        }
+      ]
+    }
+  ]
+}
