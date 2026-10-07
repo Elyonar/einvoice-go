@@ -51,7 +51,7 @@ func main() {
 	// 1. A buyer
 	buyer, err := client.Buyers.Create(ctx, &einvoice.CreateBuyerBody{
 		Name:      "Acme Nigeria Ltd",
-		TaxID:     einvoice.Ptr("33875194-0001"),
+		TaxID:     einvoice.Ptr("12345678-0001"),
 		Email:     einvoice.Ptr("accounts@acme.ng"),
 		PartyType: einvoice.Ptr(einvoice.CreateBuyerDtoPartyTypeCompany),
 		Address:   &einvoice.BuyerAddressDto{Line1: "1 Marina", City: "Lagos", Country: "NG"},

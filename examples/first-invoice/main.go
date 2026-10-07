@@ -30,9 +30,9 @@ func main() {
 	ref := hex.EncodeToString(refBytes)
 
 	// @step create-buyer Create a buyer
-	// @text A buyer is the party you invoice. A B2B buyer carries its tax id (TIN), which the tax authority checks on submission. A TIN is unique per organisation: on 409 RES002, reuse the buyer you already have.
+	// @text A buyer is the party you invoice. A B2B buyer carries its tax id (TIN), which the tax authority checks on submission. A buyer can never carry your own organisation's TIN (the authority refuses SAME_PARTY_TIN); the sandbox accepts any well-formed TIN. A TIN is unique per organisation: on 409 RES002, reuse the buyer you already have.
 	// @op createBuyer
-	taxID := "33875194-0001"
+	taxID := "12345678-0001"
 	buyer, err := yona.Buyers.Create(ctx, &einvoice.CreateBuyerBody{
 		Name:      "Acme Nigeria Ltd " + ref,
 		PartyType: einvoice.Ptr(einvoice.CreateBuyerDtoPartyTypeCompany),
@@ -118,7 +118,7 @@ func main() {
 	fmt.Println("submitted", submitted.Invoice.Status)
 
 	// @step wait Wait for the outcome
-	// @text Poll the status as last recorded (or listen for invoice.accepted / invoice.rejected webhooks).
+	// @text Poll the status as last recorded (or listen for invoice.accepted / invoice.rejected webhooks). A rejection carries the authority's reasons in submissions[].rejectReasons: print them and stop, since a rejected invoice cannot be queried or downloaded.
 	// @op getInvoiceStatus
 	settled := map[einvoice.SubmissionStatusDtoStatus]bool{
 		einvoice.SubmissionStatusDtoStatusSigned:      true,
@@ -142,6 +142,18 @@ func main() {
 		reference = *status.AuthorityReference
 	}
 	fmt.Println("status", status.Status, reference)
+	if status.Status == einvoice.SubmissionStatusDtoStatusRejected {
+		for _, submission := range status.Submissions {
+			for _, reason := range submission.RejectReasons {
+				field := ""
+				if reason.Field != nil {
+					field = *reason.Field
+				}
+				fmt.Println("  refused:", reason.Code, field, reason.Message)
+			}
+		}
+		log.Fatal("the tax authority rejected the invoice; fix what it named and submit again")
+	}
 
 	// @step query-status Ask the tax authority directly
 	// @text QueryStatus asks the authority now instead of reading the last recorded state.
