@@ -1,5 +1,4 @@
-// Runs examples/<id>/main.go as an integrator would: the key comes only from YONA_API_KEY. Used by
-// scripts/smoke_remote. Not shipped. The key is passed through the child's environment and never printed.
+// Runs examples/<id>/main.go as an integrator would: the key comes only from YONA_API_KEY. Not shipped. The key is passed through the child's environment and never printed.
 //
 //	go run ./scripts/run_examples            (YONA_API_KEY, optional YONA_BASE_URL) every example
 //	go run ./scripts/run_examples webhooks   one example

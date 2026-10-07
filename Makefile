@@ -1,4 +1,4 @@
-.PHONY: sync sync-check test lint examples guides guides-check smoke-remote clean
+.PHONY: sync sync-check test lint examples guides guides-check clean
 
 sync:               ## copy the snapshot and vectors from einvoice-js and regenerate types_gen.go (needs git + Node 22)
 	sh scripts/sync.sh
@@ -23,8 +23,6 @@ guides:             ## examples/ -> guides/guides.json
 guides-check:       ## fail when guides/guides.json is stale
 	go run ./scripts/export_guides --check
 
-smoke-remote:       ## verify your own sandbox key against the real API (refuses sk_live_)
-	go run ./scripts/smoke_remote
 
 clean:
 	go clean ./...

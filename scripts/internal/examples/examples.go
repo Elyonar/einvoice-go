@@ -1,5 +1,5 @@
 // Package examples runs examples/<id>/main.go as an integrator would: the key comes only from
-// YONA_API_KEY. Used by scripts/run_examples and scripts/smoke_remote. Not shipped. The key is passed
+// YONA_API_KEY. Used by scripts/run_examples. Not shipped. The key is passed
 // through the child's environment and never printed.
 //
 // The examples are the code the guides show: they pass only the API key, so they talk to the default
