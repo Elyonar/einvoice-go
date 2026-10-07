@@ -13,7 +13,7 @@ set -eu
 
 # einvoice-js feat/codegen-emitters (PR #7): the generator with the Go emitter, snapshot of the
 # 106 API-key operations at API 1.0, and the webhook vectors.
-EINVOICE_JS_REF="${EINVOICE_JS_REF:-95dff8f8d18004ec195add19af06fc1c8a5f9f3f}"
+EINVOICE_JS_REF="${EINVOICE_JS_REF:-885f1cd8d0f26fac0bd3cbf98129e09ebefbab1c}"
 EINVOICE_JS_REPO="${EINVOICE_JS_REPO:-https://github.com/Elyonar/einvoice-js.git}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CHECK=""
