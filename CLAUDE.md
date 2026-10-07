@@ -5,8 +5,7 @@ This file provides context for Claude Code and any AI agent working on this proj
 ## Project Overview
 
 Go SDK for the Yona e-invoicing API, the port of `@useyona/einvoice-js` (`Elyonar/einvoice-js`,
-locally `../elyonar-sdk`) module for module. It covers **exactly what an API key may call** (the
-the API-key scope): invoicing, submissions to the tax authority, output and share links, items, reference
+locally `../elyonar-sdk`) module for module. It covers **exactly what an API key may call**: invoicing, submissions to the tax authority, output and share links, items, reference
 data, buyers, the read-only seller, received invoices and issued history, invoice settings, the tax
 connection, the organisation (read), billing reads and webhooks (read, test, redeliver). Users,
 invitations, roles, API keys, organisation management, collections, purchases and webhook-endpoint
