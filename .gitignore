@@ -6,3 +6,6 @@ coverage.html
 /dist/
 .env
 .DS_Store
+CLAUDE.md
+DEVELOPMENT.md
+PUBLISHING.md

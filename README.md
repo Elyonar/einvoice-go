@@ -265,8 +265,6 @@ make examples    # run the examples against your sandbox key (YONA_API_KEY)
 make sync        # regenerate the typed models from the API definition
 ```
 
-See [DEVELOPMENT.md](DEVELOPMENT.md) for the full setup and the release steps.
-
 ## License
 
 MIT
