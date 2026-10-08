@@ -1,0 +1,503 @@
+{
+  "language": "go",
+  "package": "github.com/elyonar/einvoice-go",
+  "sdkVersion": "0.1.1",
+  "generatedFrom": "870eb76",
+  "setup": "import (\n\t\"context\"\n\t\"encoding/json\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nctx := context.Background()\nyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\nif err != nil {\n\tlog.Fatal(err)\n}",
+  "literal": {
+    "string": "go",
+    "body": "json-string"
+  },
+  "operations": {
+    "archiveItem": {
+      "module": "Items",
+      "method": "Archive",
+      "template": "result, err := yona.Items.Archive(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "batchSubmitInvoices": {
+      "module": "Submissions",
+      "method": "BatchSubmit",
+      "template": "var params einvoice.BatchSubmitInvoicesBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Submissions.BatchSubmit(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "bulkDeleteBuyers": {
+      "module": "Buyers",
+      "method": "BulkDelete",
+      "template": "var params einvoice.BulkDeleteBuyersBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.BulkDelete(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "cancelInvoice": {
+      "module": "Invoices",
+      "method": "Cancel",
+      "template": "var params einvoice.CancelInvoiceBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Invoices.Cancel(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "checkBillingAccountBalance": {
+      "module": "Billing.Accounts",
+      "method": "CheckBalance",
+      "template": "var query einvoice.CheckBillingAccountBalanceQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Accounts.CheckBalance(ctx, {{path:id}}, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "checkBuyerReachability": {
+      "module": "Buyers",
+      "method": "CheckReachability",
+      "template": "var query einvoice.CheckBuyerReachabilityQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.CheckReachability(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "checkBuyerWithTaxAuthority": {
+      "module": "Buyers",
+      "method": "CheckWithTaxAuthority",
+      "template": "var params einvoice.CheckBuyerWithTaxAuthorityBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.CheckWithTaxAuthority(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "createAndSubmitInvoice": {
+      "module": "Submissions",
+      "method": "CreateAndSubmit",
+      "template": "var params einvoice.CreateAndSubmitInvoiceBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Submissions.CreateAndSubmit(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "createBuyer": {
+      "module": "Buyers",
+      "method": "Create",
+      "template": "var params einvoice.CreateBuyerBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.Create(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "createInvoice": {
+      "module": "Invoices",
+      "method": "Create",
+      "template": "var params einvoice.CreateInvoiceBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Invoices.Create(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "createInvoiceShareLink": {
+      "module": "ShareLinks",
+      "method": "Create",
+      "template": "var params einvoice.CreateInvoiceShareLinkBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.ShareLinks.Create(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "createItem": {
+      "module": "Items",
+      "method": "Create",
+      "template": "var params einvoice.CreateItemBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Items.Create(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "deleteBuyer": {
+      "module": "Buyers",
+      "method": "Delete",
+      "template": "result, err := yona.Buyers.Delete(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "deleteInvoice": {
+      "module": "Invoices",
+      "method": "Delete",
+      "template": "result, err := yona.Invoices.Delete(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "deleteItem": {
+      "module": "Items",
+      "method": "Delete",
+      "template": "result, err := yona.Items.Delete(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "downloadInvoice": {
+      "module": "Output",
+      "method": "GetDownloadLink",
+      "template": "result, err := yona.Output.GetDownloadLink(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "downloadIssuedHistoryPdf": {
+      "module": "IssuedHistory",
+      "method": "DownloadPDF",
+      "template": "result, err := yona.IssuedHistory.DownloadPDF(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "finaliseInvoice": {
+      "module": "Invoices",
+      "method": "Finalise",
+      "template": "result, err := yona.Invoices.Finalise(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getActiveSubscription": {
+      "module": "Billing.Subscriptions",
+      "method": "GetActive",
+      "template": "result, err := yona.Billing.Subscriptions.GetActive(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getBillingAccount": {
+      "module": "Billing.Accounts",
+      "method": "GetMine",
+      "template": "var query einvoice.GetBillingAccountQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Accounts.GetMine(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getBillingAccountStats": {
+      "module": "Billing.Accounts",
+      "method": "GetStats",
+      "template": "var query einvoice.GetBillingAccountStatsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Accounts.GetStats(ctx, {{path:id}}, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getBillingStatement": {
+      "module": "Billing.Statements",
+      "method": "Get",
+      "template": "var query einvoice.GetBillingStatementQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Statements.Get(ctx, {{path:period}}, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getBuyer": {
+      "module": "Buyers",
+      "method": "Get",
+      "template": "result, err := yona.Buyers.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getBuyerVerificationStatus": {
+      "module": "Buyers",
+      "method": "GetVerificationStatus",
+      "template": "result, err := yona.Buyers.GetVerificationStatus(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInboundHistoryRun": {
+      "module": "InboundInvoices",
+      "method": "GetHistoryRun",
+      "template": "result, err := yona.InboundInvoices.GetHistoryRun(ctx, {{path:runId}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInboundInvoice": {
+      "module": "InboundInvoices",
+      "method": "Get",
+      "template": "result, err := yona.InboundInvoices.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInboundInvoiceAnalytics": {
+      "module": "InboundInvoices",
+      "method": "GetAnalytics",
+      "template": "var query einvoice.GetInboundInvoiceAnalyticsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.InboundInvoices.GetAnalytics(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInvoice": {
+      "module": "Invoices",
+      "method": "Get",
+      "template": "result, err := yona.Invoices.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInvoiceAuthorityCopy": {
+      "module": "Submissions",
+      "method": "GetAuthorityCopy",
+      "template": "result, err := yona.Submissions.GetAuthorityCopy(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInvoiceListSummary": {
+      "module": "Invoices",
+      "method": "GetSummary",
+      "template": "var query einvoice.GetInvoiceListSummaryQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Invoices.GetSummary(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInvoiceOverview": {
+      "module": "Invoices",
+      "method": "GetOverview",
+      "template": "var query einvoice.GetInvoiceOverviewQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Invoices.GetOverview(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInvoiceReferenceList": {
+      "module": "Reference",
+      "method": "GetResource",
+      "template": "result, err := yona.Reference.GetResource(ctx, {{path:type}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInvoiceSettings": {
+      "module": "InvoiceSettings",
+      "method": "Get",
+      "template": "result, err := yona.InvoiceSettings.Get(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInvoiceStatistics": {
+      "module": "Invoices",
+      "method": "GetStatistics",
+      "template": "var query einvoice.GetInvoiceStatisticsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Invoices.GetStatistics(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getInvoiceStatus": {
+      "module": "Submissions",
+      "method": "GetStatus",
+      "template": "result, err := yona.Submissions.GetStatus(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getIssuedHistoryInvoice": {
+      "module": "IssuedHistory",
+      "method": "Get",
+      "template": "result, err := yona.IssuedHistory.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getItem": {
+      "module": "Items",
+      "method": "Get",
+      "template": "result, err := yona.Items.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getLedgerEntry": {
+      "module": "Billing.Transactions",
+      "method": "Get",
+      "template": "result, err := yona.Billing.Transactions.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getOrganization": {
+      "module": "Organization",
+      "method": "Get",
+      "template": "result, err := yona.Organization.Get(ctx, {{path:orgId}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getOrganizationReadiness": {
+      "module": "Organization",
+      "method": "GetReadiness",
+      "template": "result, err := yona.Organization.GetReadiness(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getPayment": {
+      "module": "Billing.Payments",
+      "method": "Get",
+      "template": "result, err := yona.Billing.Payments.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getSandboxUsage": {
+      "module": "Billing.Sandbox",
+      "method": "GetUsage",
+      "template": "result, err := yona.Billing.Sandbox.GetUsage(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getSeller": {
+      "module": "Sellers",
+      "method": "Get",
+      "template": "result, err := yona.Sellers.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getSellerVerificationStatus": {
+      "module": "Sellers",
+      "method": "GetVerificationStatus",
+      "template": "result, err := yona.Sellers.GetVerificationStatus(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getSubscription": {
+      "module": "Billing.Subscriptions",
+      "method": "Get",
+      "template": "result, err := yona.Billing.Subscriptions.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getTaxConnection": {
+      "module": "TaxConnection",
+      "method": "Get",
+      "template": "result, err := yona.TaxConnection.Get(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getUsageAnalytics": {
+      "module": "Billing.Transactions",
+      "method": "GetUsageAnalytics",
+      "template": "var query einvoice.GetUsageAnalyticsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Transactions.GetUsageAnalytics(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getUsageByCostCode": {
+      "module": "Billing.Transactions",
+      "method": "GetUsageByCostCode",
+      "template": "var query einvoice.GetUsageByCostCodeQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Transactions.GetUsageByCostCode(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getWebhookDelivery": {
+      "module": "Webhooks.Deliveries",
+      "method": "Get",
+      "template": "result, err := yona.Webhooks.Deliveries.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getWebhookEndpoint": {
+      "module": "Webhooks.Endpoints",
+      "method": "Get",
+      "template": "result, err := yona.Webhooks.Endpoints.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getWebhookEvent": {
+      "module": "Webhooks.Events",
+      "method": "Get",
+      "template": "result, err := yona.Webhooks.Events.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "issueCreditNote": {
+      "module": "Invoices",
+      "method": "IssueCreditNote",
+      "template": "var params einvoice.IssueCreditNoteBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Invoices.IssueCreditNote(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "issueDebitNote": {
+      "module": "Invoices",
+      "method": "IssueDebitNote",
+      "template": "var params einvoice.IssueDebitNoteBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Invoices.IssueDebitNote(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "issueInvoice": {
+      "module": "Submissions",
+      "method": "Issue",
+      "template": "result, err := yona.Submissions.Issue(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listBuyers": {
+      "module": "Buyers",
+      "method": "List",
+      "template": "var query einvoice.ListBuyersQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listHsCodeCategories": {
+      "module": "Reference",
+      "method": "ListHsCodeCategories",
+      "template": "result, err := yona.Reference.ListHsCodeCategories(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listHsCodes": {
+      "module": "Reference",
+      "method": "ListHsCodes",
+      "template": "var query einvoice.ListHsCodesQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Reference.ListHsCodes(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listInboundHistoryRuns": {
+      "module": "InboundInvoices",
+      "method": "ListHistoryRuns",
+      "template": "var query einvoice.ListInboundHistoryRunsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.InboundInvoices.ListHistoryRuns(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listInboundInvoices": {
+      "module": "InboundInvoices",
+      "method": "List",
+      "template": "var query einvoice.ListInboundInvoicesQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.InboundInvoices.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listInvoiceReferenceLists": {
+      "module": "Reference",
+      "method": "ListResources",
+      "template": "result, err := yona.Reference.ListResources(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listInvoiceShareLinks": {
+      "module": "ShareLinks",
+      "method": "List",
+      "template": "result, err := yona.ShareLinks.List(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listInvoices": {
+      "module": "Invoices",
+      "method": "List",
+      "template": "var query einvoice.ListInvoicesQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Invoices.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listIssuedHistory": {
+      "module": "IssuedHistory",
+      "method": "List",
+      "template": "var query einvoice.ListIssuedHistoryQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.IssuedHistory.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listItems": {
+      "module": "Items",
+      "method": "List",
+      "template": "var query einvoice.ListItemsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Items.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listLedgerEntries": {
+      "module": "Billing.Transactions",
+      "method": "List",
+      "template": "var query einvoice.ListLedgerEntriesQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Transactions.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listPayments": {
+      "module": "Billing.Payments",
+      "method": "List",
+      "template": "var query einvoice.ListPaymentsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Payments.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listSandboxTransactions": {
+      "module": "Billing.Sandbox",
+      "method": "ListTransactions",
+      "template": "var query einvoice.ListSandboxTransactionsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Sandbox.ListTransactions(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listSellers": {
+      "module": "Sellers",
+      "method": "List",
+      "template": "var query einvoice.ListSellersQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Sellers.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listSubscriptionRenewals": {
+      "module": "Billing.Subscriptions",
+      "method": "ListRenewals",
+      "template": "var query einvoice.ListSubscriptionRenewalsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Subscriptions.ListRenewals(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listSubscriptions": {
+      "module": "Billing.Subscriptions",
+      "method": "List",
+      "template": "var query einvoice.ListSubscriptionsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Subscriptions.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listUsedItemCodes": {
+      "module": "Items",
+      "method": "ListUsedCodes",
+      "template": "var query einvoice.ListUsedItemCodesQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Items.ListUsedCodes(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listWebhookDeliveries": {
+      "module": "Webhooks.Deliveries",
+      "method": "List",
+      "template": "var query einvoice.ListWebhookDeliveriesQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Webhooks.Deliveries.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listWebhookEndpoints": {
+      "module": "Webhooks.Endpoints",
+      "method": "List",
+      "template": "result, err := yona.Webhooks.Endpoints.List(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listWebhookEventTypes": {
+      "module": "Webhooks.EventTypes",
+      "method": "List",
+      "template": "result, err := yona.Webhooks.EventTypes.List(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listWebhookEvents": {
+      "module": "Webhooks.Events",
+      "method": "List",
+      "template": "var query einvoice.ListWebhookEventsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Webhooks.Events.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "loadOlderInboundInvoices": {
+      "module": "InboundInvoices",
+      "method": "LoadOlder",
+      "template": "result, err := yona.InboundInvoices.LoadOlder(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "lookupTaxId": {
+      "module": "Reference",
+      "method": "LookupTaxID",
+      "template": "var query einvoice.LookupTaxIdQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Reference.LookupTaxID(ctx, {{path:value}}, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "previewSubscriptionPlanChange": {
+      "module": "Billing.Subscriptions",
+      "method": "PreviewPlanChange",
+      "template": "var query einvoice.PreviewSubscriptionPlanChangeQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Subscriptions.PreviewPlanChange(ctx, {{path:id}}, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "queryInvoiceStatus": {
+      "module": "Submissions",
+      "method": "QueryStatus",
+      "template": "result, err := yona.Submissions.QueryStatus(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "recordInvoicePayment": {
+      "module": "Submissions",
+      "method": "RecordPayment",
+      "template": "var params einvoice.RecordInvoicePaymentBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Submissions.RecordPayment(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "redeliverWebhookDelivery": {
+      "module": "Webhooks.Deliveries",
+      "method": "Redeliver",
+      "template": "result, err := yona.Webhooks.Deliveries.Redeliver(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "redeliverWebhookEvent": {
+      "module": "Webhooks.Events",
+      "method": "Redeliver",
+      "template": "var params einvoice.RedeliverWebhookEventBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Webhooks.Events.Redeliver(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "renumberInvoice": {
+      "module": "Submissions",
+      "method": "Renumber",
+      "template": "result, err := yona.Submissions.Renumber(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "reopenInvoice": {
+      "module": "Invoices",
+      "method": "Reopen",
+      "template": "result, err := yona.Invoices.Reopen(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "retryInvoiceSubmission": {
+      "module": "Submissions",
+      "method": "Retry",
+      "template": "result, err := yona.Submissions.Retry(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "reviseInvoice": {
+      "module": "Invoices",
+      "method": "Revise",
+      "template": "result, err := yona.Invoices.Revise(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "revokeInvoiceShareLink": {
+      "module": "ShareLinks",
+      "method": "Revoke",
+      "template": "result, err := yona.ShareLinks.Revoke(ctx, {{path:id}}, {{path:linkId}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "searchBuyers": {
+      "module": "Buyers",
+      "method": "Search",
+      "template": "var query einvoice.SearchBuyersQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.Search(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "searchSellers": {
+      "module": "Sellers",
+      "method": "Search",
+      "template": "var query einvoice.SearchSellersQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Sellers.Search(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "sendInvoice": {
+      "module": "Output",
+      "method": "Send",
+      "template": "var params einvoice.SendInvoiceBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Output.Send(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "submitInvoice": {
+      "module": "Submissions",
+      "method": "Submit",
+      "template": "var query einvoice.SubmitInvoiceQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Submissions.Submit(ctx, {{path:id}}, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "testWebhookEndpoint": {
+      "module": "Webhooks.Endpoints",
+      "method": "Test",
+      "template": "var params einvoice.TestWebhookEndpointBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Webhooks.Endpoints.Test(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "unarchiveItem": {
+      "module": "Items",
+      "method": "Unarchive",
+      "template": "result, err := yona.Items.Unarchive(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "updateBuyer": {
+      "module": "Buyers",
+      "method": "Update",
+      "template": "var params einvoice.UpdateBuyerBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.Update(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "updateInvoice": {
+      "module": "Invoices",
+      "method": "Update",
+      "template": "var params einvoice.UpdateInvoiceBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Invoices.Update(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "updateItem": {
+      "module": "Items",
+      "method": "Update",
+      "template": "var params einvoice.UpdateItemBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Items.Update(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "validateInvoice": {
+      "module": "Reference",
+      "method": "ValidateInvoice",
+      "template": "var params einvoice.ValidateInvoiceBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Reference.ValidateInvoice(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "verifyBuyerTaxNumber": {
+      "module": "Buyers",
+      "method": "VerifyTaxNumber",
+      "template": "result, err := yona.Buyers.VerifyTaxNumber(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    }
+  }
+}

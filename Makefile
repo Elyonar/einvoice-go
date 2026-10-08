@@ -1,4 +1,4 @@
-.PHONY: sync sync-check test lint examples guides guides-check clean
+.PHONY: sync sync-check test lint examples guides guides-check operations operations-check clean
 
 sync:               ## copy the snapshot and vectors from einvoice-js and regenerate types_gen.go (needs git + Node 22)
 	sh scripts/sync.sh
@@ -22,6 +22,12 @@ guides:             ## examples/ -> guides/guides.json
 
 guides-check:       ## fail when guides/guides.json is stale
 	go run ./scripts/export_guides --check
+
+operations:         ## parity source -> guides/operations.json (the playground's per-operation Go calls)
+	go test . -count=1 -run '^TestOperationsMapIsCurrent$$' -write-operations
+
+operations-check:   ## fail when guides/operations.json is stale, wrong, or a rendered snippet does not compile and run
+	go test . -count=1 -run '^TestOperations'
 
 
 clean:
