@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Added
+
+- `guides/operations.json`: for each of the 98 API-key operations the SDK calls, the module, method
+  and a Go call template the portal's API playground renders (`make operations`). Derived from the
+  parity registry; `make test` checks it is current and compiles and runs every rendered snippet.
+  Not shipped in the package; no code change.
+
 ## 0.1.1 (2026-10-07)
 
 ### Changed

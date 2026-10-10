@@ -32,6 +32,7 @@ import (
 	"strings"
 
 	"github.com/elyonar/einvoice-go/scripts/internal/examples"
+	"github.com/elyonar/einvoice-go/scripts/internal/schemaexample"
 )
 
 const (
@@ -94,145 +95,16 @@ func fail(format string, args ...any) {
 	os.Exit(1)
 }
 
-// ── example bodies from the schema ──
+// ── example bodies from the schema (scripts/internal/schemaexample) ──
 
-// orderedMap keeps the schema's `required` order in the rendered example, as JSON.stringify would.
-type orderedMap []kv
+func marshal(v any, indent string) ([]byte, error) { return schemaexample.Marshal(v, indent) }
 
-type kv struct {
-	key   string
-	value any
-}
-
-func (m orderedMap) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	buf.WriteByte('{')
-	for i, e := range m {
-		if i > 0 {
-			buf.WriteByte(',')
-		}
-		k, _ := json.Marshal(e.key)
-		buf.Write(k)
-		buf.WriteByte(':')
-		v, err := marshal(e.value, "")
-		if err != nil {
-			return nil, err
-		}
-		buf.Write(v)
+func exampleOf(schema map[string]any) any {
+	value, err := schemaexample.Builder{Schemas: snap.Schemas}.Of(schema)
+	if err != nil {
+		fail("%v", err)
 	}
-	buf.WriteByte('}')
-	return buf.Bytes(), nil
-}
-
-// marshal encodes without HTML escaping; indent "" compacts, otherwise indents.
-func marshal(v any, indent string) ([]byte, error) {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if indent != "" {
-		enc.SetIndent("", indent)
-	}
-	if err := enc.Encode(v); err != nil {
-		return nil, err
-	}
-	return bytes.TrimRight(buf.Bytes(), "\n"), nil
-}
-
-func resolveRef(ref string) map[string]any {
-	name := strings.TrimPrefix(ref, "#/components/schemas/")
-	schema, ok := snap.Schemas[name]
-	if !ok {
-		fail("schema %s is not in the snapshot", name)
-	}
-	return schema
-}
-
-func list(v any) []any {
-	l, _ := v.([]any)
-	return l
-}
-
-func exampleOf(schema map[string]any, depth int) any {
-	if schema == nil || depth > 8 {
-		return nil
-	}
-	if ref, ok := schema["$ref"].(string); ok {
-		return exampleOf(resolveRef(ref), depth+1)
-	}
-	if ex, ok := schema["example"]; ok {
-		return ex
-	}
-	if def, ok := schema["default"]; ok {
-		return def
-	}
-	if enum := list(schema["enum"]); len(enum) > 0 {
-		return enum[0]
-	}
-	if one := list(schema["oneOf"]); len(one) > 0 {
-		m, _ := one[0].(map[string]any)
-		return exampleOf(m, depth+1)
-	}
-	if anyOf := list(schema["anyOf"]); len(anyOf) > 0 {
-		m, _ := anyOf[0].(map[string]any)
-		return exampleOf(m, depth+1)
-	}
-	if all := list(schema["allOf"]); len(all) > 0 {
-		var parts []any
-		for _, s := range all {
-			m, _ := s.(map[string]any)
-			parts = append(parts, exampleOf(m, depth+1))
-		}
-		merged := orderedMap{}
-		for _, p := range parts {
-			om, ok := p.(orderedMap)
-			if !ok {
-				return parts[0]
-			}
-			merged = append(merged, om...)
-		}
-		return merged
-	}
-	kind, _ := schema["type"].(string)
-	switch kind {
-	case "object":
-		props, _ := schema["properties"].(map[string]any)
-		out := orderedMap{}
-		for _, name := range list(schema["required"]) {
-			n, _ := name.(string)
-			p, _ := props[n].(map[string]any)
-			out = append(out, kv{n, exampleOf(p, depth+1)})
-		}
-		return out
-	case "array":
-		items, _ := schema["items"].(map[string]any)
-		return []any{exampleOf(items, depth+1)}
-	case "integer", "number":
-		if min, ok := schema["minimum"]; ok {
-			return min
-		}
-		return 1
-	case "boolean":
-		return false
-	case "string":
-		switch schema["format"] {
-		case "uuid":
-			return "00000000-0000-7000-8000-000000000000"
-		case "date":
-			return "2026-10-05"
-		case "date-time":
-			return "2026-10-05T12:00:00Z"
-		}
-		return "string"
-	}
-	if _, ok := schema["properties"]; ok {
-		copied := map[string]any{}
-		for k, v := range schema {
-			copied[k] = v
-		}
-		copied["type"] = "object"
-		return exampleOf(copied, depth)
-	}
-	return nil
+	return value
 }
 
 // acceptsIdempotencyKey mirrors parity_test.go: the route reads an Idempotency-Key.
@@ -295,7 +167,7 @@ func curlFor(operationID string) string {
 		}
 		name, _ := p["name"].(string)
 		schema, _ := p["schema"].(map[string]any)
-		value := exampleOf(schema, 0)
+		value := exampleOf(schema)
 		rendered := name
 		if value != nil {
 			rendered = stringOf(value)
@@ -321,7 +193,7 @@ func curlFor(operationID string) string {
 		lines = append(lines, `  -H "Idempotency-Key: $(uuidgen)"`)
 	}
 	if bodySchema != nil {
-		body, err := marshal(exampleOf(bodySchema, 0), "  ")
+		body, err := marshal(exampleOf(bodySchema), "  ")
 		if err != nil {
 			fail("%s: %v", operationID, err)
 		}
