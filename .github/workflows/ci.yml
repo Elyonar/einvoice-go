@@ -41,14 +41,27 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      # A short-lived token from the Yona SDK sync GitHub App, which is installed on einvoice-js only
+      # with read access to its contents. Without the app the check below skips with a notice.
+      - name: Token that may read einvoice-js
+        id: einvoice-js-token
+        if: vars.EINVOICE_JS_APP_CLIENT_ID != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.EINVOICE_JS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.EINVOICE_JS_APP_PRIVATE_KEY }}
+          owner: Elyonar
+          repositories: einvoice-js
+          permission-contents: read
+
       - name: Snapshot, vectors and generated models match einvoice-js
         # einvoice-js is private: without a token that may read it the check is skipped with a notice
         # (the fallback agreed with the owner); it then runs locally before a release (PUBLISHING.md).
         env:
-          EINVOICE_JS_TOKEN: ${{ secrets.EINVOICE_JS_TOKEN }}
+          EINVOICE_JS_TOKEN: ${{ steps.einvoice-js-token.outputs.token || secrets.EINVOICE_JS_TOKEN }}
         run: |
           if [ -z "$EINVOICE_JS_TOKEN" ]; then
-            echo "::notice title=sync-check skipped::einvoice-js is private and no EINVOICE_JS_TOKEN secret is set. Run make sync-check locally before a release, with EINVOICE_JS_DIR set to your einvoice-js checkout (any folder name)."
+            echo "::notice title=sync-check skipped::einvoice-js is private and no credential may read it here: set the Yona SDK sync app (variable EINVOICE_JS_APP_CLIENT_ID, secret EINVOICE_JS_APP_PRIVATE_KEY), or a fork pull request is running. Run make sync-check locally before a release, with EINVOICE_JS_DIR set to your einvoice-js checkout (any folder name)."
             exit 0
           fi
           make sync-check
