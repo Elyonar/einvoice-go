@@ -1,4 +1,4 @@
-.PHONY: sync sync-check test lint examples guides guides-check operations operations-check clean
+.PHONY: sync sync-check test lint examples guides guides-check operations operations-check clean release
 
 sync:               ## copy the snapshot and vectors from einvoice-js and regenerate types_gen.go (needs git + Node 22)
 	sh scripts/sync.sh
@@ -33,3 +33,6 @@ operations-check:   ## fail when guides/operations.json is stale, wrong, or a re
 clean:
 	go clean ./...
 	rm -f coverage.out
+
+release:            ## prepare a release: BUMP=patch|minor|major|X.Y.Z (default: from the commits), DRY=1 to only show the plan
+	node scripts/release.mjs $(BUMP) $(if $(DRY),--dry-run)

@@ -264,6 +264,7 @@ make lint        # gofmt + go vet
 make examples    # run the examples against your sandbox key (YONA_API_KEY)
 make sync        # regenerate the typed models from the API definition
 make operations  # regenerate guides/operations.json (the portal playground's Go call per operation)
+make release     # prepare a release: version, CHANGELOG, guides, checks (DRY=1 to preview)
 ```
 
 `guides/operations.json` is generated from the parity test's method registry, never edited by hand;
