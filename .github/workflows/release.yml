@@ -12,10 +12,10 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -36,12 +36,12 @@ jobs:
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Tag v${{ steps.pkg.outputs.version }} already exists. Skipping release."
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         if: steps.tag_check.outputs.exists == 'false'
         with:
           go-version: "1.22"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.tag_check.outputs.exists == 'false'
         with:
           node-version: 22
@@ -50,13 +50,26 @@ jobs:
         if: steps.tag_check.outputs.exists == 'false'
         run: make lint && go build ./... && go vet ./examples/... && make test guides-check
 
+      # A short-lived token from the Yona SDK sync GitHub App, which is installed on einvoice-js only
+      # with read access to its contents. Without the app the check below skips with a notice.
+      - name: Token that may read einvoice-js
+        id: einvoice-js-token
+        if: steps.tag_check.outputs.exists == 'false' && vars.EINVOICE_JS_APP_CLIENT_ID != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.EINVOICE_JS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.EINVOICE_JS_APP_PRIVATE_KEY }}
+          owner: Elyonar
+          repositories: einvoice-js
+          permission-contents: read
+
       - name: Snapshot, vectors and generated models match einvoice-js
         if: steps.tag_check.outputs.exists == 'false'
         env:
-          EINVOICE_JS_TOKEN: ${{ secrets.EINVOICE_JS_TOKEN }}
+          EINVOICE_JS_TOKEN: ${{ steps.einvoice-js-token.outputs.token || secrets.EINVOICE_JS_TOKEN }}
         run: |
           if [ -z "$EINVOICE_JS_TOKEN" ]; then
-            echo "::notice title=sync-check skipped::einvoice-js is private and no EINVOICE_JS_TOKEN secret is set. Run make sync-check locally before a release, with EINVOICE_JS_DIR set to your einvoice-js checkout (any folder name)."
+            echo "::notice title=sync-check skipped::einvoice-js is private and no credential may read it here: set the Yona SDK sync app (variable EINVOICE_JS_APP_CLIENT_ID, secret EINVOICE_JS_APP_PRIVATE_KEY), or a fork pull request is running. Run make sync-check locally before a release, with EINVOICE_JS_DIR set to your einvoice-js checkout (any folder name)."
             exit 0
           fi
           make sync-check
@@ -82,7 +95,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.tag_check.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.pkg.outputs.version }}
           body_path: release_notes.md
