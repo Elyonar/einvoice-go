@@ -12,10 +12,10 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -36,12 +36,12 @@ jobs:
         if: steps.tag_check.outputs.exists == 'true'
         run: echo "Tag v${{ steps.pkg.outputs.version }} already exists. Skipping release."
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         if: steps.tag_check.outputs.exists == 'false'
         with:
           go-version: "1.22"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: steps.tag_check.outputs.exists == 'false'
         with:
           node-version: 22
@@ -82,7 +82,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.tag_check.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.pkg.outputs.version }}
           body_path: release_notes.md
