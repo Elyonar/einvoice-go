@@ -1,8 +1,8 @@
 # einvoice-go
 
 The official Go SDK for the [Yona](https://useyona.com) e-invoicing API: create and manage invoices,
-report them to the tax authority, and work with buyers, items, received invoices, billing and
-webhooks. Standard library only, Go 1.22+.
+report them to the tax authority, and work with buyers, items, received invoices, billing,
+collections and webhooks. Standard library only, Go 1.22+.
 
 Every Yona SDK has the same modules and methods; in Go the names are `PascalCase`
 (`client.Invoices.IssueCreditNote`).
@@ -215,7 +215,8 @@ and retries, sandbox and live, received invoices. Run them against your sandbox 
 ## API reference
 
 Every method takes `ctx` first and optional trailing `...RequestOption`. Request and query types are
-named after the operation (`*CreateInvoiceBody`, `*ListInvoicesQuery`); a query may be nil.
+named after the operation (`*CreateInvoiceBody`, `*ListInvoicesQuery`); a query may be nil. 123
+methods in 27 modules: einvoice-js's 122, plus `TaxConnection.GetWithQuery` (see below).
 
 | Module | Methods |
 |---|---|
@@ -229,19 +230,37 @@ named after the operation (`*CreateInvoiceBody`, `*ListInvoicesQuery`); a query 
 | `client.Sellers` | `List`, `Get`, `GetVerificationStatus`, `Search` |
 | `client.InboundInvoices` | `List`, `Get`, `GetAnalytics`, `ListHistoryRuns`, `GetHistoryRun` |
 | `client.IssuedHistory` | `List`, `Get`, `DownloadPDF` |
-| `client.InvoiceSettings`, `client.TaxConnection` | `Get` |
+| `client.InvoiceSettings` | `Get` |
+| `client.TaxConnection` | `Get`, `GetWithQuery` |
 | `client.Organization` | `Get`, `GetReadiness` |
 | `client.Billing.Accounts` | `GetMine`, `GetStats`, `CheckBalance` |
 | `client.Billing.Payments` | `List`, `Get` |
 | `client.Billing.Sandbox` | `ListTransactions`, `GetUsage` |
 | `client.Billing.Statements` | `Get` |
-| `client.Billing.Subscriptions` | `GetActive`, `List`, `Get`, `ListRenewals`, `PreviewPlanChange` |
+| `client.Billing.Subscriptions` | `GetActive`, `List`, `Get`, `ListRenewals`, `PreviewPlanChange`, `GetDealOffer`, `QuoteSubOrgSlot` |
 | `client.Billing.Transactions` | `List`, `Get`, `GetUsageAnalytics`, `GetUsageByCostCode` |
+| `client.Billing.Usage` | `GetInvoices`, `QuoteOverage` |
+| `client.Billing.Plans` | `GetRecommendation` |
+| `client.Billing.Partner` | `Get`, `GetOffer`, `QuoteSeat`, `QuoteBasket`, `QuotePlanChange` |
+| `client.Collections` | `ListAccounts`, `CreateAccount`, `GetAccount`, `GetAccountStatus`, `DeactivateAccount`, `QuoteFee`, `ListPayments`, `ListBuyerCredits`, `ListExceptions`, `ResolveException`, `ListSettlementAccounts`, `GetSettlementAccount`, `ListBanks` |
 | `client.Webhooks.Endpoints` | `List`, `Get`, `Test` |
 | `client.Webhooks.Deliveries` | `List`, `Get`, `Redeliver` |
 | `client.Webhooks.Events` | `List`, `Get`, `Redeliver` |
 | `client.Webhooks.EventTypes` | `List` |
 | package `einvoice` | `VerifyWebhook`, `SignWebhookPayload`, `ComputeWebhookSignature`, `ParseSignatureHeader`, `Paginate`, `Collect` |
+
+- `TaxConnection.GetWithQuery(ctx, &einvoice.GetTaxConnectionQuery{Identifier: einvoice.Ptr(einvoice.GetTaxConnectionQueryIdentifierTrue)})`
+  also says which number the tax authority holds for the organisation, its TIN or its 13-digit Tax
+  ID (`EinvoicingIdentifier`, or `IdentifierNextAction` when it holds none); `Fresh` asks again.
+  Both are rationed. `Get(ctx, ...RequestOption)` is unchanged and makes no lookup (einvoice-js
+  overloads `taxConnection.get`; Go adds a method instead).
+- `Collections` answers only where collections are switched on for the key's mode; elsewhere 409
+  `BIZ120`. Its writes (`CreateAccount`, `DeactivateAccount`, `ResolveException`) take no
+  `Idempotency-Key` and are not retried.
+- `Billing.Usage.GetInvoices`, `Billing.Plans.GetRecommendation`, `Billing.Partner.GetOffer` and
+  `Billing.Subscriptions.GetDealOffer` return nil (and no error) when the API answers `null`.
+- The payments service's reads (bank account, transfers) join with its launch; until then they are
+  in `ExcludedOperations`.
 
 Account management (users, roles, API keys, purchases, webhook endpoint settings) is done in the
 Yona dashboard, not through the API key.

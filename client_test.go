@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -219,6 +220,103 @@ func TestClientIssueCreditNoteDecodesEitherShape(t *testing.T) {
 	}
 	if _, err := data.AsCreditNotePreviewAnswerDto(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestClientTaxConnectionGetKeepsTheOptionsOnlyCallOf08AndGetWithQueryTakesTheR151Query(t *testing.T) {
+	f := newFake(okAnswer(map[string]any{"state": "connected"}))
+	c := newClient(t, f)
+	ctx := context.Background()
+	if _, err := c.TaxConnection.Get(ctx, WithRequestHeaders(map[string]string{"X-Trace": "t1"})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.TaxConnection.GetWithQuery(ctx, &GetTaxConnectionQuery{Identifier: Ptr(GetTaxConnectionQueryIdentifierTrue)}, WithRequestHeaders(map[string]string{"X-Trace": "t2"})); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.TaxConnection.GetWithQuery(ctx, &GetTaxConnectionQuery{Fresh: Ptr(GetTaxConnectionQueryFreshTrue)}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.TaxConnection.Get(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.TaxConnection.GetWithQuery(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"", "identifier=true", "fresh=true", "", ""}
+	for i, q := range want {
+		if got := f.requests[i].URL.RawQuery; got != q || f.requests[i].URL.Path != "/i/v1/tax-connection" {
+			t.Fatalf("call %d: %s?%s", i, f.requests[i].URL.Path, got)
+		}
+	}
+	if f.requests[0].Header.Get("X-Trace") != "t1" || f.requests[1].Header.Get("X-Trace") != "t2" {
+		t.Fatal("options lost")
+	}
+}
+
+func TestClientHasNoPaymentsServiceMethodsUntilPaymentsLaunchesInProduction(t *testing.T) {
+	ct := reflect.TypeOf(Client{})
+	for _, gone := range []string{"BankAccount", "Transfers", "PaymentsAccount"} {
+		if _, found := ct.FieldByName(gone); found {
+			t.Fatalf("%s should not exist", gone)
+		}
+	}
+	n := 0
+	for _, e := range ExcludedOperations {
+		if strings.HasPrefix(e.Path, "/p/") {
+			n++
+		}
+	}
+	if n != 5 {
+		t.Fatalf("%d excluded payments operations", n)
+	}
+}
+
+func TestClientNullableBillingAnswersAreNil(t *testing.T) {
+	ctx := context.Background()
+	calls := map[string]func(c *Client) (bool, error){
+		"Usage.GetInvoices": func(c *Client) (bool, error) {
+			v, err := c.Billing.Usage.GetInvoices(ctx)
+			return v == nil, err
+		},
+		"Plans.GetRecommendation": func(c *Client) (bool, error) {
+			v, err := c.Billing.Plans.GetRecommendation(ctx)
+			return v == nil, err
+		},
+		"Partner.GetOffer": func(c *Client) (bool, error) {
+			v, err := c.Billing.Partner.GetOffer(ctx)
+			return v == nil, err
+		},
+		"Subscriptions.GetDealOffer": func(c *Client) (bool, error) {
+			v, err := c.Billing.Subscriptions.GetDealOffer(ctx)
+			return v == nil, err
+		},
+	}
+	for name, call := range calls {
+		isNil, err := call(newClient(t, newFake(jsonAnswer(200, map[string]any{"meta": map[string]any{}, "data": nil}))))
+		if err != nil || !isNil {
+			t.Fatalf("%s on null: nil=%v %v", name, isNil, err)
+		}
+		isNil, err = call(newClient(t, newFake(okAnswer(map[string]any{}))))
+		if err != nil || isNil {
+			t.Fatalf("%s on an object: nil=%v %v", name, isNil, err)
+		}
+	}
+}
+
+func TestClientCollectionsWritesAreNotRetriedAndListsDecodePlainArrays(t *testing.T) {
+	f := newFake(refusal(503, "SYS001", nil, nil), refusal(503, "SYS001", nil, nil))
+	c := newClient(t, f)
+	ctx := context.Background()
+	_, err := c.Collections.CreateAccount(ctx, &CreateCollectionAccountBody{})
+	var se *ServerError
+	if !errors.As(err, &se) || f.calls() != 1 || f.requests[0].Header.Get("Idempotency-Key") != "" {
+		t.Fatal(err, f.calls())
+	}
+
+	f = newFake(okAnswer([]map[string]any{{"uuid": "058", "name": "A bank", "sortCode": "058"}}))
+	banks, err := newClient(t, f).Collections.ListBanks(ctx, &ListCollectionBanksQuery{Jurisdiction: ListCollectionBanksQueryJurisdictionNG})
+	if err != nil || len(banks) != 1 || banks[0].SortCode != "058" || f.requests[0].URL.RawQuery != "jurisdiction=NG" {
+		t.Fatal(banks, err, f.requests[0].URL.RawQuery)
 	}
 }
 

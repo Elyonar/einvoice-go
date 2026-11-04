@@ -228,6 +228,10 @@ var parityMethods = []parityEntry{
 
 	{"InvoiceSettings.Get", func(ctx context.Context, c *Client) error { _, err := c.InvoiceSettings.Get(ctx); return err }},
 	{"TaxConnection.Get", func(ctx context.Context, c *Client) error { _, err := c.TaxConnection.Get(ctx); return err }},
+	{"TaxConnection.GetWithQuery", func(ctx context.Context, c *Client) error {
+		_, err := c.TaxConnection.GetWithQuery(ctx, &GetTaxConnectionQuery{Identifier: Ptr(GetTaxConnectionQueryIdentifierTrue)})
+		return err
+	}},
 	{"Organization.Get", func(ctx context.Context, c *Client) error { _, err := c.Organization.Get(ctx, "ID1"); return err }},
 	{"Organization.GetReadiness", func(ctx context.Context, c *Client) error { _, err := c.Organization.GetReadiness(ctx); return err }},
 
@@ -271,6 +275,14 @@ var parityMethods = []parityEntry{
 		_, err := c.Billing.Subscriptions.PreviewPlanChange(ctx, "ID1", &PreviewSubscriptionPlanChangeQuery{})
 		return err
 	}},
+	{"Billing.Subscriptions.GetDealOffer", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Subscriptions.GetDealOffer(ctx)
+		return err
+	}},
+	{"Billing.Subscriptions.QuoteSubOrgSlot", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Subscriptions.QuoteSubOrgSlot(ctx)
+		return err
+	}},
 	{"Billing.Transactions.List", func(ctx context.Context, c *Client) error {
 		_, err := c.Billing.Transactions.List(ctx, nil)
 		return err
@@ -285,6 +297,91 @@ var parityMethods = []parityEntry{
 	}},
 	{"Billing.Transactions.GetUsageByCostCode", func(ctx context.Context, c *Client) error {
 		_, err := c.Billing.Transactions.GetUsageByCostCode(ctx, nil)
+		return err
+	}},
+	{"Billing.Usage.GetInvoices", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Usage.GetInvoices(ctx)
+		return err
+	}},
+	{"Billing.Usage.QuoteOverage", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Usage.QuoteOverage(ctx)
+		return err
+	}},
+	{"Billing.Plans.GetRecommendation", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Plans.GetRecommendation(ctx)
+		return err
+	}},
+	{"Billing.Partner.Get", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Partner.Get(ctx)
+		return err
+	}},
+	{"Billing.Partner.GetOffer", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Partner.GetOffer(ctx)
+		return err
+	}},
+	{"Billing.Partner.QuoteSeat", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Partner.QuoteSeat(ctx, &GetPartnerSeatQuoteQuery{Plan: "plan_growth"})
+		return err
+	}},
+	{"Billing.Partner.QuoteBasket", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Partner.QuoteBasket(ctx, &GetPartnerBasketQuoteQuery{Seats: "plan_growth:2"})
+		return err
+	}},
+	{"Billing.Partner.QuotePlanChange", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Partner.QuotePlanChange(ctx, "ID1", &GetPartnerPlanChangeQuoteQuery{Plan: "plan_growth"})
+		return err
+	}},
+
+	{"Collections.ListAccounts", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.ListAccounts(ctx, nil)
+		return err
+	}},
+	{"Collections.CreateAccount", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.CreateAccount(ctx, &CreateCollectionAccountBody{})
+		return err
+	}},
+	{"Collections.GetAccount", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.GetAccount(ctx, "ID1")
+		return err
+	}},
+	{"Collections.GetAccountStatus", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.GetAccountStatus(ctx, "ID1")
+		return err
+	}},
+	{"Collections.DeactivateAccount", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.DeactivateAccount(ctx, "ID1", &DeactivateCollectionAccountBody{})
+		return err
+	}},
+	{"Collections.QuoteFee", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.QuoteFee(ctx, &QuoteCollectionFeeQuery{Kind: QuoteCollectionFeeQueryKindDynamic, AmountMinor: 100})
+		return err
+	}},
+	{"Collections.ListPayments", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.ListPayments(ctx, nil)
+		return err
+	}},
+	{"Collections.ListBuyerCredits", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.ListBuyerCredits(ctx, nil)
+		return err
+	}},
+	{"Collections.ListExceptions", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.ListExceptions(ctx, nil)
+		return err
+	}},
+	{"Collections.ResolveException", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.ResolveException(ctx, "ID1", &ResolveCollectionExceptionBody{})
+		return err
+	}},
+	{"Collections.ListSettlementAccounts", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.ListSettlementAccounts(ctx, nil)
+		return err
+	}},
+	{"Collections.GetSettlementAccount", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.GetSettlementAccount(ctx, "ID1")
+		return err
+	}},
+	{"Collections.ListBanks", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.ListBanks(ctx, &ListCollectionBanksQuery{Jurisdiction: ListCollectionBanksQueryJurisdictionNG})
 		return err
 	}},
 
@@ -558,14 +655,16 @@ func TestParityPATCHRoutesThatAcceptAKeySendItOnlyWhenTheCallerGivesOne(t *testi
 
 func TestParityTheMethodCountIsTheDocumentedSurface(t *testing.T) {
 	calls := recordCalls(t)
-	if len(calls) != 99 {
-		t.Fatalf("%d methods: 99 methods in 23 modules at einvoice-js 0.8.0 (update CLAUDE.md and README when this changes)", len(calls))
+	// einvoice-js 0.9.0 has 122 methods in 27 modules; Go adds TaxConnection.GetWithQuery, its form of
+	// the overloaded taxConnection.get(query, options), so Get keeps its 0.8 signature.
+	if len(calls) != 123 {
+		t.Fatalf("%d methods: 123 methods in 27 modules at einvoice-js 0.9.0 (update CLAUDE.md and README when this changes)", len(calls))
 	}
 	modules := map[string]bool{}
 	for _, c := range calls {
 		modules[c.method[:strings.LastIndex(c.method, ".")]] = true
 	}
-	if len(modules) != 23 {
+	if len(modules) != 27 {
 		t.Fatalf("%d modules", len(modules))
 	}
 }

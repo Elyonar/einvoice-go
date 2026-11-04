@@ -12,9 +12,9 @@
 #   EINVOICE_JS_TOKEN=<token>          a GitHub token that may read einvoice-js while it is private (CI: a secret)
 set -eu
 
-# einvoice-js feat/codegen-emitters (PR #7): the generator with the Go emitter, snapshot of the
-# 106 API-key operations at API 1.0, and the webhook vectors.
-EINVOICE_JS_REF="${EINVOICE_JS_REF:-885f1cd8d0f26fac0bd3cbf98129e09ebefbab1c}"
+# einvoice-js v0.9.0 (the release-0.9.0 merge): snapshot of the 134 API-key operations, the
+# webhook vectors and the generator with the Go emitter.
+EINVOICE_JS_REF="${EINVOICE_JS_REF:-cdc3f25b5d7ca09127f010ff2eaed6b07c458522}"
 EINVOICE_JS_REPO="${EINVOICE_JS_REPO:-https://github.com/Elyonar/einvoice-js.git}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CHECK=""

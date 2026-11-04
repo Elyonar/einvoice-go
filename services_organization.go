@@ -34,8 +34,18 @@ func (s *InvoiceSettingsService) Get(ctx context.Context, opts ...RequestOption)
 type TaxConnectionService struct{ baseService }
 
 // Get is the connection's state in the key's mode, its key and the next step (`tax_connection.read`).
+// It makes no identifier lookup; GetWithQuery does.
 func (s *TaxConnectionService) Get(ctx context.Context, opts ...RequestOption) (*GetTaxConnectionData, error) {
+	return s.GetWithQuery(ctx, nil, opts...)
+}
+
+// GetWithQuery is Get with the query (`tax_connection.read`): `Identifier: "true"` also resolves
+// which number the tax authority holds for the organisation (`EinvoicingIdentifier`, or
+// `IdentifierNextAction` when it holds none); `Fresh: "true"` asks the authority again. Both are
+// rationed: pass them only when that answer is needed. A nil query is Get. (einvoice-js overloads
+// `taxConnection.get(query, options)`; Go keeps Get's signature and adds this method.)
+func (s *TaxConnectionService) GetWithQuery(ctx context.Context, query *GetTaxConnectionQuery, opts ...RequestOption) (*GetTaxConnectionData, error) {
 	out := &GetTaxConnectionData{}
-	err := s.call(ctx, Call{Method: "GET", Path: "/i/v1/tax-connection", Options: requestOptions(opts)}, out)
+	err := s.call(ctx, Call{Method: "GET", Path: "/i/v1/tax-connection", Query: query, Options: requestOptions(opts)}, out)
 	return out, err
 }
