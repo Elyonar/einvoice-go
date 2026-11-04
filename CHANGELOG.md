@@ -5,12 +5,35 @@ All notable changes to this project will be documented in this file. The format 
 
 ## Unreleased
 
+In line with `@useyona/einvoice-js` 0.9.0: the 134 operations an API key may call, 13 documented
+exclusions.
+
 ### Added
 
+- `client.Collections`: the bank accounts that collect an invoice's payment and what they received (accounts:
+  list, create, get, status, deactivate; the fee quote; payments; buyer credits; exceptions: list,
+  resolve; settlement accounts; banks). They answer only where collections are switched on for the
+  key's mode; elsewhere 409 `BIZ120`.
+- `client.Billing.Usage` (`GetInvoices`, `QuoteOverage`), `client.Billing.Plans` (`GetRecommendation`), `client.Billing.Partner` (`Get`, `GetOffer`, `QuoteSeat`, `QuoteBasket`, `QuotePlanChange`), and `client.Billing.Subscriptions.GetDealOffer` and `QuoteSubOrgSlot`. Answers that can be empty are `nil`.
+- `client.TaxConnection.GetWithQuery(ctx, query, opts...)`: with `Identifier: "true"` or `Fresh: "true"`, which number the tax authority holds for the organisation, its TIN or its 13-digit Tax ID. `Get(ctx, opts...)` keeps its signature.
 - `guides/operations.json`: for each of the 98 API-key operations the SDK calls, the module, method
   and a Go call template the portal's API playground renders (`make operations`). Derived from the
   parity registry; `make test` checks it is current and compiles and runs every rendered snippet.
   Not shipped in the package; no code change.
+
+### Changed
+
+- **Breaking:** the generated models follow the API. Plan-change quotes carry `daysLeft` and `periodDays`,
+  and no longer `creditMinor`, `windowsInPeriod` or `windowsUnissued`. Payment, ledger and plan-change
+  reason enums gain values. The organisation gains `einvoicingTaxId`, the billing account `plan`, invoices
+  `createdViaClientId`, and the tax connection `einvoicingIdentifier`, `identifierSource` and
+  `identifierNextAction`.
+- The payments service's reads (bank account, transfers) are excluded until payments launches in
+  production.
+
+### Fixed
+
+- `make sync` runs the generator on macOS (the einvoice-js checkout is resolved with `pwd -P`).
 
 ## 0.1.1 (2026-10-07)
 
