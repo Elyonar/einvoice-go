@@ -19,4 +19,9 @@ var ExcludedOperations = []ExcludedOperation{
 	{Method: "GET", Path: "/i/v1/buyers/setup", Reason: "Dashboard form metadata; the code lists are Reference.GetResource."},
 	{Method: "GET", Path: "/i/v1/invoices/setup", Reason: "Dashboard form metadata; the code lists are Reference.GetResource, the connection TaxConnection.Get."},
 	{Method: "GET", Path: "/b/v1/setup", Reason: "Dashboard billing overview in one call; its parts are Billing.Accounts/Subscriptions/Sandbox."},
+	{Method: "GET", Path: "/p/v1/accounts/current", Reason: "Payments is not live in production yet (owner, 3 Nov 2026): a method joins with its launch."},
+	{Method: "GET", Path: "/p/v1/accounts/current/transactions", Reason: "Payments is not live in production yet (owner, 3 Nov 2026): a method joins with its launch."},
+	{Method: "GET", Path: "/p/v1/accounts/current/transactions/{id}", Reason: "Payments is not live in production yet (owner, 3 Nov 2026): a method joins with its launch."},
+	{Method: "GET", Path: "/p/v1/transfers", Reason: "Payments is not live in production yet (owner, 3 Nov 2026): a method joins with its launch."},
+	{Method: "GET", Path: "/p/v1/transfers/{id}", Reason: "Payments is not live in production yet (owner, 3 Nov 2026): a method joins with its launch."},
 }

@@ -61,6 +61,9 @@ var preferredMethod = map[string]string{
 	// Output.DownloadPDF is the same route with `Accept: application/pdf` and ?format=pdf; the
 	// operation answers the JSON download link, which is GetDownloadLink.
 	"downloadInvoice": "Output.GetDownloadLink",
+	// TaxConnection.Get is GetWithQuery without the query; the map shows the call that takes the
+	// operation's query, as einvoice-js shows taxConnection.get({{query}}).
+	"getTaxConnection": "TaxConnection.GetWithQuery",
 }
 
 type operationLiteral struct {

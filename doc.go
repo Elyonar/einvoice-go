@@ -2,9 +2,9 @@
 // @useyona/einvoice-js module for module. It covers exactly what an API key may call: invoicing,
 // submissions to the tax authority, output and share links, items, reference data, buyers, the
 // read-only seller, received invoices and issued history, invoice settings, the tax connection, the
-// organisation (read), billing reads and webhooks (read, test, redeliver). Users, invitations, roles,
-// API keys, organisation management, collections, purchases and webhook-endpoint writes are done by
-// a signed-in user in the dashboard and are not in the SDK.
+// organisation (read), billing reads, collections and webhooks (read, test, redeliver). Users,
+// invitations, roles, API keys, organisation management, purchases and webhook-endpoint writes are
+// done by a signed-in user in the dashboard and are not in the SDK.
 //
 // The key decides the mode: an `sk_test_…` key is the sandbox and an `sk_live_…` key is live, on the
 // same host. There is nothing else to configure:

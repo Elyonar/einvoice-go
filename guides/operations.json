@@ -2,7 +2,7 @@
   "language": "go",
   "package": "github.com/elyonar/einvoice-go",
   "sdkVersion": "0.1.1",
-  "generatedFrom": "870eb76",
+  "generatedFrom": "398a656",
   "setup": "import (\n\t\"context\"\n\t\"encoding/json\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nctx := context.Background()\nyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\nif err != nil {\n\tlog.Fatal(err)\n}",
   "literal": {
     "string": "go",
@@ -54,6 +54,11 @@
       "method": "Create",
       "template": "var params einvoice.CreateBuyerBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.Create(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
+    "createCollectionAccount": {
+      "module": "Collections",
+      "method": "CreateAccount",
+      "template": "var params einvoice.CreateCollectionAccountBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.CreateAccount(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
     "createInvoice": {
       "module": "Invoices",
       "method": "Create",
@@ -68,6 +73,11 @@
       "module": "Items",
       "method": "Create",
       "template": "var params einvoice.CreateItemBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Items.Create(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "deactivateCollectionAccount": {
+      "module": "Collections",
+      "method": "DeactivateAccount",
+      "template": "var params einvoice.DeactivateCollectionAccountBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.DeactivateAccount(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "deleteBuyer": {
       "module": "Buyers",
@@ -129,6 +139,26 @@
       "method": "GetVerificationStatus",
       "template": "result, err := yona.Buyers.GetVerificationStatus(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
+    "getCollectionAccount": {
+      "module": "Collections",
+      "method": "GetAccount",
+      "template": "result, err := yona.Collections.GetAccount(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getCollectionAccountStatus": {
+      "module": "Collections",
+      "method": "GetAccountStatus",
+      "template": "result, err := yona.Collections.GetAccountStatus(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getCollectionSettlementAccount": {
+      "module": "Collections",
+      "method": "GetSettlementAccount",
+      "template": "result, err := yona.Collections.GetSettlementAccount(ctx, {{path:sellerId}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getDealOffer": {
+      "module": "Billing.Subscriptions",
+      "method": "GetDealOffer",
+      "template": "result, err := yona.Billing.Subscriptions.GetDealOffer(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
     "getInboundHistoryRun": {
       "module": "InboundInvoices",
       "method": "GetHistoryRun",
@@ -184,6 +214,11 @@
       "method": "GetStatus",
       "template": "result, err := yona.Submissions.GetStatus(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
+    "getInvoiceUsage": {
+      "module": "Billing.Usage",
+      "method": "GetInvoices",
+      "template": "result, err := yona.Billing.Usage.GetInvoices(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
     "getIssuedHistoryInvoice": {
       "module": "IssuedHistory",
       "method": "Get",
@@ -209,10 +244,45 @@
       "method": "GetReadiness",
       "template": "result, err := yona.Organization.GetReadiness(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
+    "getOverageQuote": {
+      "module": "Billing.Usage",
+      "method": "QuoteOverage",
+      "template": "result, err := yona.Billing.Usage.QuoteOverage(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getPartner": {
+      "module": "Billing.Partner",
+      "method": "Get",
+      "template": "result, err := yona.Billing.Partner.Get(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getPartnerBasketQuote": {
+      "module": "Billing.Partner",
+      "method": "QuoteBasket",
+      "template": "var query einvoice.GetPartnerBasketQuoteQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Partner.QuoteBasket(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getPartnerOffer": {
+      "module": "Billing.Partner",
+      "method": "GetOffer",
+      "template": "result, err := yona.Billing.Partner.GetOffer(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getPartnerPlanChangeQuote": {
+      "module": "Billing.Partner",
+      "method": "QuotePlanChange",
+      "template": "var query einvoice.GetPartnerPlanChangeQuoteQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Partner.QuotePlanChange(ctx, {{path:organizationId}}, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getPartnerSeatQuote": {
+      "module": "Billing.Partner",
+      "method": "QuoteSeat",
+      "template": "var query einvoice.GetPartnerSeatQuoteQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Partner.QuoteSeat(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
     "getPayment": {
       "module": "Billing.Payments",
       "method": "Get",
       "template": "result, err := yona.Billing.Payments.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getPlanRecommendation": {
+      "module": "Billing.Plans",
+      "method": "GetRecommendation",
+      "template": "result, err := yona.Billing.Plans.GetRecommendation(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "getSandboxUsage": {
       "module": "Billing.Sandbox",
@@ -229,6 +299,11 @@
       "method": "GetVerificationStatus",
       "template": "result, err := yona.Sellers.GetVerificationStatus(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
+    "getSubOrgSlotQuote": {
+      "module": "Billing.Subscriptions",
+      "method": "QuoteSubOrgSlot",
+      "template": "result, err := yona.Billing.Subscriptions.QuoteSubOrgSlot(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
     "getSubscription": {
       "module": "Billing.Subscriptions",
       "method": "Get",
@@ -236,8 +311,8 @@
     },
     "getTaxConnection": {
       "module": "TaxConnection",
-      "method": "Get",
-      "template": "result, err := yona.TaxConnection.Get(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+      "method": "GetWithQuery",
+      "template": "var query einvoice.GetTaxConnectionQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.TaxConnection.GetWithQuery(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "getUsageAnalytics": {
       "module": "Billing.Transactions",
@@ -283,6 +358,36 @@
       "module": "Buyers",
       "method": "List",
       "template": "var query einvoice.ListBuyersQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listCollectionAccounts": {
+      "module": "Collections",
+      "method": "ListAccounts",
+      "template": "var query einvoice.ListCollectionAccountsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.ListAccounts(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listCollectionBanks": {
+      "module": "Collections",
+      "method": "ListBanks",
+      "template": "var query einvoice.ListCollectionBanksQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.ListBanks(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listCollectionBuyerCredits": {
+      "module": "Collections",
+      "method": "ListBuyerCredits",
+      "template": "var query einvoice.ListCollectionBuyerCreditsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.ListBuyerCredits(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listCollectionExceptions": {
+      "module": "Collections",
+      "method": "ListExceptions",
+      "template": "var query einvoice.ListCollectionExceptionsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.ListExceptions(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listCollectionPayments": {
+      "module": "Collections",
+      "method": "ListPayments",
+      "template": "var query einvoice.ListCollectionPaymentsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.ListPayments(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listCollectionSettlementAccounts": {
+      "module": "Collections",
+      "method": "ListSettlementAccounts",
+      "template": "var query einvoice.ListCollectionSettlementAccountsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.ListSettlementAccounts(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "listHsCodeCategories": {
       "module": "Reference",
@@ -404,6 +509,11 @@
       "method": "QueryStatus",
       "template": "result, err := yona.Submissions.QueryStatus(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
+    "quoteCollectionFee": {
+      "module": "Collections",
+      "method": "QuoteFee",
+      "template": "var query einvoice.QuoteCollectionFeeQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.QuoteFee(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
     "recordInvoicePayment": {
       "module": "Submissions",
       "method": "RecordPayment",
@@ -428,6 +538,11 @@
       "module": "Invoices",
       "method": "Reopen",
       "template": "result, err := yona.Invoices.Reopen(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "resolveCollectionException": {
+      "module": "Collections",
+      "method": "ResolveException",
+      "template": "var params einvoice.ResolveCollectionExceptionBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.ResolveException(ctx, {{path:paymentId}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "retryInvoiceSubmission": {
       "module": "Submissions",

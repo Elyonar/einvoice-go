@@ -104,6 +104,88 @@ func (s *SubscriptionsService) PreviewPlanChange(ctx context.Context, id string,
 	return out, err
 }
 
+// GetDealOffer is the deal offered to the organisation; nil when there is none (`billing.subscription.read`).
+func (s *SubscriptionsService) GetDealOffer(ctx context.Context, opts ...RequestOption) (*GetDealOfferData, error) {
+	var out *GetDealOfferData
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/deals/offer", Options: requestOptions(opts)}, &out)
+	return out, err
+}
+
+// QuoteSubOrgSlot is what one more sub-organisation slot would cost; writes nothing (`billing.subscription.read`).
+func (s *SubscriptionsService) QuoteSubOrgSlot(ctx context.Context, opts ...RequestOption) (*GetSubOrgSlotQuoteData, error) {
+	out := &GetSubOrgSlotQuoteData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/sub-org-slots/quote", Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// UsageService is invoice usage (`/b/v1/usage/invoices`): this month's invoices against the plan's allowance.
+type UsageService struct{ baseService }
+
+// GetInvoices is this month's invoice usage, the allowance and its thresholds; nil when the
+// organisation has none (`billing.subscription.read`).
+func (s *UsageService) GetInvoices(ctx context.Context, opts ...RequestOption) (*GetInvoiceUsageData, error) {
+	var out *GetInvoiceUsageData
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/usage/invoices/current", Options: requestOptions(opts)}, &out)
+	return out, err
+}
+
+// QuoteOverage is what an overage pack would cost now; writes nothing (`billing.subscription.read`).
+func (s *UsageService) QuoteOverage(ctx context.Context, opts ...RequestOption) (*GetOverageQuoteData, error) {
+	out := &GetOverageQuoteData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/usage/invoices/overage/quote", Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// PlansService is the plan catalogue (`/b/v1/plans`).
+type PlansService struct{ baseService }
+
+// GetRecommendation is the plan recommended for the organisation from its usage; nil when there is
+// none (`billing.subscription.read`).
+func (s *PlansService) GetRecommendation(ctx context.Context, opts ...RequestOption) (*GetPlanRecommendationData, error) {
+	var out *GetPlanRecommendationData
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/plans/recommendation", Options: requestOptions(opts)}, &out)
+	return out, err
+}
+
+// PartnerService is the partner account (`/b/v1/partner`): an Integrated Partner's tier, seats and
+// their quotes. Read-only for an API key.
+type PartnerService struct{ baseService }
+
+// Get is the partner account: tier, seats, capacity and renewal (`billing.subscription.read`).
+func (s *PartnerService) Get(ctx context.Context, opts ...RequestOption) (*GetPartnerData, error) {
+	out := &GetPartnerData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/partner", Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// GetOffer is the partner tier the organisation may buy; nil when there is none (`billing.subscription.read`).
+func (s *PartnerService) GetOffer(ctx context.Context, opts ...RequestOption) (*GetPartnerOfferData, error) {
+	var out *GetPartnerOfferData
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/partner/offer", Options: requestOptions(opts)}, &out)
+	return out, err
+}
+
+// QuoteSeat is what one business seat on `Plan` would cost; writes nothing (`billing.subscription.read`).
+func (s *PartnerService) QuoteSeat(ctx context.Context, query *GetPartnerSeatQuoteQuery, opts ...RequestOption) (*GetPartnerSeatQuoteData, error) {
+	out := &GetPartnerSeatQuoteData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/partner/seats/quote", Query: query, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// QuoteBasket is what seats for several businesses would cost together; writes nothing (`billing.subscription.read`).
+func (s *PartnerService) QuoteBasket(ctx context.Context, query *GetPartnerBasketQuoteQuery, opts ...RequestOption) (*GetPartnerBasketQuoteData, error) {
+	out := &GetPartnerBasketQuoteData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/partner/seats/basket/quote", Query: query, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// QuotePlanChange is what moving one business to `Plan` would cost; writes nothing (`billing.subscription.read`).
+func (s *PartnerService) QuotePlanChange(ctx context.Context, organizationID string, query *GetPartnerPlanChangeQuoteQuery, opts ...RequestOption) (*GetPartnerPlanChangeQuoteData, error) {
+	out := &GetPartnerPlanChangeQuoteData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/partner/businesses/" + seg(organizationID) + "/change-plan/quote", Query: query, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
 // TransactionsService is the credit ledger (`/b/v1/transactions`).
 type TransactionsService struct{ baseService }
 
@@ -147,6 +229,12 @@ type BillingService struct {
 	Subscriptions *SubscriptionsService
 	// Transactions: the credit ledger and usage.
 	Transactions *TransactionsService
+	// Usage: this month's invoice usage and overage quotes.
+	Usage *UsageService
+	// Plans: the plan catalogue's recommendation.
+	Plans *PlansService
+	// Partner: the partner account and its quotes (read-only).
+	Partner *PartnerService
 }
 
 func newBillingService(base baseService) *BillingService {
@@ -157,5 +245,8 @@ func newBillingService(base baseService) *BillingService {
 		Statements:    &StatementsService{base},
 		Subscriptions: &SubscriptionsService{base},
 		Transactions:  &TransactionsService{base},
+		Usage:         &UsageService{base},
+		Plans:         &PlansService{base},
+		Partner:       &PartnerService{base},
 	}
 }

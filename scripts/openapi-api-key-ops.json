@@ -2,7 +2,7 @@
   "source": "https://g.useyona.com/docs/openapi.json",
   "title": "Yona API",
   "version": "1.0",
-  "count": 106,
+  "count": 134,
   "operations": [
     {
       "method": "GET",
@@ -310,6 +310,1401 @@
     },
     {
       "method": "GET",
+      "path": "/b/v1/collection/accounts",
+      "operationId": "listCollectionAccounts",
+      "tags": [
+        "Accounts",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.account.read"
+      ],
+      "summary": "The organisation’s collection accounts in this mode",
+      "description": "User or API key; `collection.account.read`. Typed filters; `search` is an account-number prefix; newest first.",
+      "parameters": [
+        {
+          "name": "page",
+          "required": false,
+          "in": "query",
+          "description": "Page number (1-based).",
+          "schema": {
+            "minimum": 1,
+            "default": 1,
+            "type": "number"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "in": "query",
+          "description": "Items per page.",
+          "schema": {
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "type": "number"
+          }
+        },
+        {
+          "name": "status",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "active",
+              "expired",
+              "deactivated"
+            ]
+          }
+        },
+        {
+          "name": "kind",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "dynamic",
+              "persistent"
+            ]
+          }
+        },
+        {
+          "name": "invoiceId",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        {
+          "name": "buyerId",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        {
+          "name": "sellerId",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        {
+          "name": "provider",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "paystack"
+            ]
+          }
+        },
+        {
+          "name": "jurisdiction",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "NG"
+            ]
+          }
+        },
+        {
+          "name": "search",
+          "required": false,
+          "in": "query",
+          "description": "An account-number prefix.",
+          "schema": {
+            "maxLength": 20,
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "pagination"
+                        ],
+                        "properties": {
+                          "pagination": {
+                            "$ref": "#/components/schemas/billing.ApiPaginationMetaDto"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/billing.CollectionAccountDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/b/v1/collection/accounts",
+      "operationId": "createCollectionAccount",
+      "tags": [
+        "Accounts",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.account.create"
+      ],
+      "summary": "Open a collection account for an invoice",
+      "description": "User or API key; `collection.account.create`. Idempotent on the body’s `reference` (scoped to the organisation and the token’s mode): the same body replays 200, another is 409 BIZ107. `dynamic` needs `invoiceId`; the amount defaults to the invoice’s outstanding and expires within the configured bounds. `persistent` is not available yet (422 BIZ102 `{kind: not_available_yet}`). One open account per invoice. The buyer pays to `accountNumber`.",
+      "parameters": [],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/billing.CreateCollectionAccountDto"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "The account of a replayed `reference`.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.CollectionAccountDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "201": {
+          "description": "The active account.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.CollectionAccountDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/collection/accounts/{id}",
+      "operationId": "getCollectionAccount",
+      "tags": [
+        "Accounts",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.account.read"
+      ],
+      "summary": "One collection account",
+      "description": "User or API key; `collection.account.read`.",
+      "parameters": [
+        {
+          "name": "id",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.CollectionAccountDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/b/v1/collection/accounts/{id}/deactivate",
+      "operationId": "deactivateCollectionAccount",
+      "tags": [
+        "Accounts",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.account.deactivate"
+      ],
+      "summary": "Deactivate a collection account",
+      "description": "User or API key; `collection.account.deactivate`. A dynamic account is closed locally (the provider’s request cannot be withdrawn): a transfer that still arrives becomes an `account_inactive` exception. 200 also when it already was deactivated; an expired account is 409.",
+      "parameters": [
+        {
+          "name": "id",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/billing.DeactivateCollectionAccountDto"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "The account, `status: deactivated`.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.CollectionAccountDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/collection/accounts/{id}/status",
+      "operationId": "getCollectionAccountStatus",
+      "tags": [
+        "Accounts",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.account.read"
+      ],
+      "summary": "The provider’s state of a collection account",
+      "description": "User or API key; `collection.account.read`. Asks the provider; a settled credit it reports that billing holds no payment for is ingested (a missed webhook is healed by the user’s own check).",
+      "parameters": [
+        {
+          "name": "id",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.CollectionAccountStatusDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/collection/banks",
+      "operationId": "listCollectionBanks",
+      "tags": [
+        "Banks",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.settlement_account.read"
+      ],
+      "summary": "The rail’s bank list for this mode",
+      "description": "User or API key; `collection.settlement_account.read`. Cached per mode; every item has a `sortCode` (the code the settlement-account routes take). No static fallback: 503 when the provider cannot answer and nothing is cached.",
+      "parameters": [
+        {
+          "name": "jurisdiction",
+          "required": true,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "NG"
+            ]
+          }
+        },
+        {
+          "name": "provider",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "paystack"
+            ]
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/billing.BankDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/collection/credits",
+      "operationId": "listCollectionBuyerCredits",
+      "tags": [
+        "Credits",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.payment.read"
+      ],
+      "summary": "Buyer credit: the unapplied, unrefunded remainder of each buyer’s payments",
+      "description": "User or API key; `collection.payment.read`. Derived from the payments, never a stored balance; `balanceMinor > 0` only.",
+      "parameters": [
+        {
+          "name": "page",
+          "required": false,
+          "in": "query",
+          "description": "Page number (1-based).",
+          "schema": {
+            "minimum": 1,
+            "default": 1,
+            "type": "number"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "in": "query",
+          "description": "Items per page.",
+          "schema": {
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "type": "number"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "pagination"
+                        ],
+                        "properties": {
+                          "pagination": {
+                            "$ref": "#/components/schemas/billing.ApiPaginationMetaDto"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/billing.BuyerCreditDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/collection/exceptions",
+      "operationId": "listCollectionExceptions",
+      "tags": [
+        "Exceptions",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.exception.read"
+      ],
+      "summary": "Payments a person must resolve",
+      "description": "User or API key; `collection.exception.read`. `unmatched` or `overpaid`, with something left, not denied by the provider. Every row carries `refundsEnabled`, as the payments list does.",
+      "parameters": [
+        {
+          "name": "page",
+          "required": false,
+          "in": "query",
+          "description": "Page number (1-based).",
+          "schema": {
+            "minimum": 1,
+            "default": 1,
+            "type": "number"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "in": "query",
+          "description": "Items per page.",
+          "schema": {
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "type": "number"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "pagination"
+                        ],
+                        "properties": {
+                          "pagination": {
+                            "$ref": "#/components/schemas/billing.ApiPaginationMetaDto"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/billing.CollectionPaymentDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/b/v1/collection/exceptions/{paymentId}/resolve",
+      "operationId": "resolveCollectionException",
+      "tags": [
+        "Exceptions",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.exception.resolve"
+      ],
+      "summary": "Re-point an exception’s remainder at an invoice or a buyer, or record an external refund",
+      "description": "User or API key; `collection.exception.resolve`. Exactly one of `invoiceId` | `buyerId` applies the unapplied, unrefunded remainder (an overpayment’s excess can pay another invoice — this is how buyer credit is spent); the answer is the payment after the attempt. `resolution: refund_recorded_externally` records a refund the seller made from their own bank. A payment the provider did not confirm is resolved by a user only.",
+      "parameters": [
+        {
+          "name": "paymentId",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/billing.ResolveCollectionExceptionDto"
+            }
+          }
+        }
+      },
+      "responses": {
+        "200": {
+          "description": "The payment after the attempt.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.CollectionPaymentDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/collection/payments",
+      "operationId": "listCollectionPayments",
+      "tags": [
+        "Payments",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.payment.read"
+      ],
+      "summary": "The organisation’s collection payments in this mode",
+      "description": "User or API key; `collection.payment.read`. `unappliedAmountMinor` is the live remainder. Newest received first. Every row carries `refundsEnabled`: false means this deployment refuses every refund (the refund route answers 409 BIZ004 `refunds_disabled`), readable here without the refund route’s step-up.",
+      "parameters": [
+        {
+          "name": "page",
+          "required": false,
+          "in": "query",
+          "description": "Page number (1-based).",
+          "schema": {
+            "minimum": 1,
+            "default": 1,
+            "type": "number"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "in": "query",
+          "description": "Items per page.",
+          "schema": {
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "type": "number"
+          }
+        },
+        {
+          "name": "reconciliationStatus",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "applied",
+              "overpaid",
+              "unmatched",
+              "returned_by_provider",
+              "reversed"
+            ]
+          }
+        },
+        {
+          "name": "collectionAccountId",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        {
+          "name": "invoiceId",
+          "required": false,
+          "in": "query",
+          "description": "The payment’s invoice target.",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        {
+          "name": "buyerId",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        {
+          "name": "from",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        {
+          "name": "to",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "format": "date-time",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "pagination"
+                        ],
+                        "properties": {
+                          "pagination": {
+                            "$ref": "#/components/schemas/billing.ApiPaginationMetaDto"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/billing.CollectionPaymentDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/collection/quote",
+      "operationId": "quoteCollectionFee",
+      "tags": [
+        "Quote",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.account.create"
+      ],
+      "summary": "Estimate the provider’s fee on a collection before the account is opened",
+      "description": "User or API key; `collection.account.create` (the people who open accounts). One row per provider of this mode (today one): the estimated fee on one transfer of `amountMinor` into an account of `kind`, what the organisation is expected to receive, the pricing in words and its date, and whether an account could be opened now (`available`; else `unavailableReason`: no active settlement account, a kind not available yet, or an amount outside the kind’s bounds). An estimate from configured pricing — no provider is called and nothing is stored; the fee actually charged is the provider’s, shown on the payment.",
+      "parameters": [
+        {
+          "name": "kind",
+          "required": true,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "dynamic",
+              "persistent"
+            ]
+          }
+        },
+        {
+          "name": "amountMinor",
+          "required": true,
+          "in": "query",
+          "schema": {
+            "minimum": 1,
+            "maximum": 10000000000000,
+            "example": 12900000,
+            "type": "integer"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/billing.CollectionQuoteDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/collection/settlement-accounts",
+      "operationId": "listCollectionSettlementAccounts",
+      "tags": [
+        "SettlementAccounts",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.settlement_account.read"
+      ],
+      "summary": "The active settlement account of this mode (zero or one item)",
+      "description": "User or API key; `collection.settlement_account.read`. The number is masked.",
+      "parameters": [
+        {
+          "name": "page",
+          "required": false,
+          "in": "query",
+          "description": "Page number (1-based).",
+          "schema": {
+            "minimum": 1,
+            "default": 1,
+            "type": "number"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "in": "query",
+          "description": "Items per page.",
+          "schema": {
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "type": "number"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "pagination"
+                        ],
+                        "properties": {
+                          "pagination": {
+                            "$ref": "#/components/schemas/billing.ApiPaginationMetaDto"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/billing.SettlementAccountDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/collection/settlement-accounts/{sellerId}",
+      "operationId": "getCollectionSettlementAccount",
+      "tags": [
+        "SettlementAccounts",
+        "collections"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "collection.settlement_account.read"
+      ],
+      "summary": "The active settlement account, by the organisation’s seller id",
+      "description": "User or API key; `collection.settlement_account.read`. `:sellerId` must be the seller stored on the active account.",
+      "parameters": [
+        {
+          "name": "sellerId",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.SettlementAccountDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/deals/offer",
+      "operationId": "getDealOffer",
+      "tags": [
+        "Deals",
+        "subscriptions"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "billing.subscription.read"
+      ],
+      "summary": "Get the deal offered to the organisation",
+      "description": "The private plan Yona offered the organisation (an Enterprise agreement): its monthly and yearly price before VAT, the VAT and the total, its invoice caps, included credits, members and what each sub-organisation costs. `data` is null when nothing is offered or the organisation is already on the offered plan. Requires `billing.subscription.read`.",
+      "parameters": [],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The offer, or null.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "nullable": true,
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/billing.DealOfferDto"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/partner",
+      "operationId": "getPartner",
+      "tags": [
+        "Partner",
+        "subscriptions"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "billing.subscription.read"
+      ],
+      "summary": "Get the partner account",
+      "description": "For a partner: its tier, access fee and discount, the businesses it pays for (each with its plan, its price at the discount and whether it leaves at the next renewal), its waiting seats (paid for, no business on them yet; they renew with the monthly charge until used or released), how many more businesses it may add, its seat checkout waiting for payment, and what the next renewal charges. Requires `billing.subscription.read`.",
+      "parameters": [],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The partner account.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.PartnerViewDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/partner/businesses/{organizationId}/change-plan/quote",
+      "operationId": "getPartnerPlanChangeQuote",
+      "tags": [
+        "Partner",
+        "subscriptions"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "billing.subscription.read"
+      ],
+      "summary": "Quote a business’s plan change",
+      "description": "What moving one of the partner’s businesses to the named Direct plan costs and when it applies. A plan dearer a month is an upgrade, made when paid: the difference between the two plans at the partner’s discount for the days left in this period, before VAT, the VAT and the total. Any other plan is a downgrade at the partner’s next renewal, charged nothing now. Requires `billing.subscription.read`.",
+      "parameters": [
+        {
+          "name": "organizationId",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "plan",
+          "required": true,
+          "in": "query",
+          "description": "The Direct plan the business would move to.",
+          "schema": {
+            "example": "plan_growth",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The change on offer.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.PartnerPlanChangeQuoteDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/partner/offer",
+      "operationId": "getPartnerOffer",
+      "tags": [
+        "Partner",
+        "subscriptions"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "billing.subscription.read"
+      ],
+      "summary": "Get the partner tier the organisation may buy",
+      "description": "For an organisation Yona designated a partner: the tier staff chose for it to start on (Launch, Scale or Platform), its monthly access fee before VAT, the VAT and the total, its discount on each business’s Direct plan, its own monthly credits and its own invoicing allowance. Buy it with `POST /b/v1/subscriptions {planCode}`. After that the tier follows the count of businesses on a paid plan at each renewal. `data` is null when the organisation is not designated, already holds a partner plan, or the tier is not on sale. Requires `billing.subscription.read`.",
+      "parameters": [],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The partner tier on offer, or null.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "nullable": true,
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/billing.PartnerOfferDto"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/partner/seats/basket/quote",
+      "operationId": "getPartnerBasketQuote",
+      "tags": [
+        "Partner",
+        "subscriptions"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "billing.subscription.read"
+      ],
+      "summary": "Quote seats for several businesses",
+      "description": "What seats for several businesses cost the partner in one checkout: a line per Direct plan (each seat at the partner’s discount for the days left in this period), the VAT and one total, what the seats add to each renewal, and how many more businesses the partner may add. A basket that takes the partner past its tier’s most businesses (Launch 9, Scale 99, Platform 999) moves it up now to the tier the new count lands in: every seat in it is priced at the new tier’s discount and the access fee difference for the days left is added. Requires `billing.subscription.read`.",
+      "parameters": [
+        {
+          "name": "seats",
+          "required": true,
+          "in": "query",
+          "description": "A quantity per Direct plan, `planCode:quantity`, comma-separated, each plan once.",
+          "schema": {
+            "example": "plan_starter:3,plan_growth:2",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The basket on offer.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.PartnerBasketQuoteDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/partner/seats/quote",
+      "operationId": "getPartnerSeatQuote",
+      "tags": [
+        "Partner",
+        "subscriptions"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "billing.subscription.read"
+      ],
+      "summary": "Quote a business seat",
+      "description": "What one more business on the named plan costs the partner: the plan at its discount for the days left in this period, before VAT, the VAT and the total, and what the business adds to each renewal. A seat that takes the partner past its tier’s most businesses moves it up a tier now: the charge includes the access fee difference for the days left, at the new tier’s discount. Requires `billing.subscription.read`.",
+      "parameters": [
+        {
+          "name": "plan",
+          "required": true,
+          "in": "query",
+          "description": "The Direct plan the business will be on.",
+          "schema": {
+            "example": "plan_growth",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The seat on offer.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.PartnerSeatQuoteDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
       "path": "/b/v1/payments/{id}",
       "operationId": "getPayment",
       "tags": [
@@ -429,7 +1824,11 @@
             "enum": [
               "credit_purchase",
               "subscription",
-              "renewal"
+              "renewal",
+              "sub_org_slot",
+              "overage_pack",
+              "partner_seat",
+              "partner_plan_change"
             ]
           }
         }
@@ -470,6 +1869,55 @@
                     "items": {
                       "$ref": "#/components/schemas/billing.PaymentDto"
                     }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/plans/recommendation",
+      "operationId": "getPlanRecommendation",
+      "tags": [
+        "PlanRecommendation",
+        "catalogue"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "billing.subscription.read"
+      ],
+      "summary": "Get the plan recommended for the organisation",
+      "description": "The Direct plan the plan chooser marks \"Recommended for you\": the cheapest whose invoice caps cover the busiest of the organisation’s last three months (live invoices; a foreign currency at Yona’s exchange rate). `needsSales` is true when no Direct plan covers it — the largest is named and a sales call offered. `data` is null when the invoice-capped plans are not on sale or the history cannot be read. Requires `billing.subscription.read`.",
+      "parameters": [],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The recommendation, or null.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "nullable": true,
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/billing.PlanRecommendationDto"
+                      }
+                    ]
                   }
                 }
               }
@@ -543,7 +1991,8 @@
               "pool_out",
               "pool_in",
               "pool_return_out",
-              "pool_return_in"
+              "pool_return_in",
+              "included"
             ]
           }
         },
@@ -817,6 +2266,50 @@
                   },
                   "data": {
                     "$ref": "#/components/schemas/billing.StatementDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/sub-org-slots/quote",
+      "operationId": "getSubOrgSlotQuote",
+      "tags": [
+        "SubOrgSlots",
+        "subscriptions"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "billing.subscription.read"
+      ],
+      "summary": "Quote a sub-organisation slot",
+      "description": "What one more sub-organisation costs on the current plan: its share of the plan’s fee for the days left in this period, before VAT, the VAT and the total the checkout charges, what it adds to each renewal, and the slots held now. Requires `billing.subscription.read`.",
+      "parameters": [],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The slot on offer.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.SubOrgSlotQuoteDto"
                   }
                 }
               }
@@ -1245,7 +2738,8 @@
               "pool_out",
               "pool_in",
               "pool_return_out",
-              "pool_return_in"
+              "pool_return_in",
+              "included"
             ]
           }
         },
@@ -1601,6 +3095,99 @@
                     "items": {
                       "$ref": "#/components/schemas/billing.CostCodeUsageDto"
                     }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/usage/invoices/current",
+      "operationId": "getInvoiceUsage",
+      "tags": [
+        "InvoiceUsage",
+        "subscriptions"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "billing.subscription.read"
+      ],
+      "summary": "Get this month’s invoice usage",
+      "description": "The invoices counted this billing month on an invoice-capped plan, by count and by value: what was used, the plan’s caps, what overage packs added, where finalising stops (the cap plus its grace, then the packs) and the usage notices already sent. A sub-organisation counting on its parent’s plan sees the parent’s month. `data` is null on a credits plan or with no plan. Requires `billing.subscription.read`.",
+      "parameters": [],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "This month’s usage, or null outside an invoice-capped plan.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "nullable": true,
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/billing.InvoiceUsageDto"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/b/v1/usage/invoices/overage/quote",
+      "operationId": "getOverageQuote",
+      "tags": [
+        "Overage",
+        "subscriptions"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "billing.subscription.read"
+      ],
+      "summary": "Quote an overage pack",
+      "description": "The overage pack this month’s invoice-capped plan sells: how much it raises both monthly invoice caps, its price as a share of the monthly fee, and that price before VAT, the VAT and the total the checkout charges. Requires `billing.subscription.read`.",
+      "parameters": [],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The pack on offer for the current month.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/billing.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/billing.OverageQuoteDto"
                   }
                 }
               }
@@ -3491,7 +5078,17 @@
       ],
       "summary": "Create a draft invoice",
       "description": "Requires `invoice.create`; charged as one invoice creation. Creates a draft (`status: draft`); the number is allocated from the series when `invoiceNumber` is omitted. Send an `Idempotency-Key` to make a retry safe: a repeated key answers the first result with `Idempotent-Replayed: true`. The `ETag` header carries the invoice `version`.",
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. The same key with the same body answers the first result (nothing is done or charged again); with another body it is 409 BIZ107.",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
       "requestBody": {
         "required": true,
         "content": {
@@ -3718,8 +5315,10 @@
           "required": true,
           "in": "path",
           "schema": {
-            "type": "string"
-          }
+            "type": "string",
+            "format": "uuid"
+          },
+          "description": "The invoice’s id."
         }
       ],
       "requestBody": null,
@@ -3770,6 +5369,15 @@
           "name": "id",
           "required": true,
           "in": "path",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. The same key with the same body answers the first result (nothing is done or charged again); with another body it is 409 BIZ107.",
+          "required": false,
           "schema": {
             "type": "string"
           }
@@ -3832,6 +5440,15 @@
           "name": "id",
           "required": true,
           "in": "path",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. The same key with the same body answers the first result (nothing is done or charged again); with another body it is 409 BIZ107.",
+          "required": false,
           "schema": {
             "type": "string"
           }
@@ -3920,6 +5537,15 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. The same key with the same body answers the first result (nothing is done or charged again); with another body it is 409 BIZ107.",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ],
       "requestBody": {
@@ -3995,7 +5621,7 @@
         "invoice.download_pdf"
       ],
       "summary": "Download an invoice as a PDF",
-      "description": "Content negotiation on `Accept`: `application/pdf` answers the PDF itself as an attachment; anything else (or no `Accept`) answers a short-lived download link in the JSON envelope. Never cached (`Cache-Control: private, no-store`, `Vary: Accept`).",
+      "description": "Content negotiation on `Accept`: `application/pdf` answers the PDF itself as an attachment; anything else (or no `Accept`) answers a short-lived download link in the JSON envelope. Never cached (`Cache-Control: private, no-store`, `Vary: Accept`). Charged `INVOICE_DOWNLOAD` per download (either form) before the PDF is rendered; refunded when the render fails.",
       "parameters": [
         {
           "name": "id",
@@ -4015,6 +5641,15 @@
             "enum": [
               "pdf"
             ]
+          }
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. A retry with the same key is not charged twice (the work is done again); the key is bound to its first request, so another request with it is 409 BIZ107.",
+          "required": false,
+          "schema": {
+            "type": "string"
           }
         }
       ],
@@ -4129,6 +5764,15 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. The same key with the same body answers the first result (nothing is done or charged again); with another body it is 409 BIZ107.",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ],
       "requestBody": null,
@@ -4195,7 +5839,7 @@
         "invoice.record_payment"
       ],
       "summary": "Record an invoice’s payment status",
-      "description": "Requires `invoice.record_payment`. Only for a document registered with the tax authority; the latest report is relayed to it. Not charged. `amountPaidMinor` moves only once the tax authority accepts the report (see `payments`).",
+      "description": "Requires `invoice.record_payment`. Only for a document registered with the tax authority; the latest report is relayed to it. Charged `PAYMENT_STATUS_REPORT` per report relayed; a change that reports nothing is free. `amountPaidMinor` moves only once the tax authority accepts the report (see `payments`).",
       "parameters": [
         {
           "name": "id",
@@ -4266,6 +5910,15 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. A retry with the same key is not charged twice (the work is done again); the key is bound to its first request, so another request with it is 409 BIZ107.",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ],
       "requestBody": null,
@@ -4316,6 +5969,15 @@
           "name": "id",
           "required": true,
           "in": "path",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. The same key with the same body answers the first result (nothing is done or charged again); with another body it is 409 BIZ107.",
+          "required": false,
           "schema": {
             "type": "string"
           }
@@ -4550,6 +6212,15 @@
           "name": "id",
           "required": true,
           "in": "path",
+          "schema": {
+            "type": "string"
+          }
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. The same key with the same body answers the first result (nothing is done or charged again); with another body it is 409 BIZ107.",
+          "required": false,
           "schema": {
             "type": "string"
           }
@@ -4864,6 +6535,15 @@
           "schema": {
             "type": "string"
           }
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. The same key with the same body answers the first result (nothing is done or charged again); with another body it is 409 BIZ107.",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
         }
       ],
       "requestBody": null,
@@ -5057,7 +6737,17 @@
       ],
       "summary": "Create an invoice and submit it",
       "description": "Requires `invoice.create` and `invoice.submit`. Creates the invoice as `POST /invoices` does, then submits it. When the submit is refused the draft is kept and `submitRefusal` says why. Accepts an `Idempotency-Key`.",
-      "parameters": [],
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. The same key with the same body answers the first result (nothing is done or charged again); with another body it is 409 BIZ107.",
+          "required": false,
+          "schema": {
+            "type": "string"
+          }
+        }
+      ],
       "requestBody": {
         "required": true,
         "content": {
@@ -6607,7 +8297,7 @@
         "item.update"
       ],
       "summary": "Update a saved item",
-      "description": "`item.update`. The create fields, all optional; `itemType` is immutable; a `sku` change obeys the unique rule; an archived item is editable but not usable on a line. Lines already built from the item never change. Emits the `invoice.item.updated` event.",
+      "description": "`item.update`. The create fields, all optional; `itemType` is immutable; a `sku` change obeys the unique rule; an archived item is editable but not usable on a line. Lines already built from the item never change. Charged `ITEM_UPDATE` per request only when the body changes something (a no-op edit is free; refunded when the write then changes nothing). Emits the `invoice.item.updated` event.",
       "parameters": [
         {
           "name": "id",
@@ -6615,6 +8305,15 @@
           "in": "path",
           "schema": {
             "format": "uuid",
+            "type": "string"
+          }
+        },
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "description": "8–128 characters of A–Z, a–z, 0–9, `_` or `-`. A retry with the same key is not charged twice (the work is done again); the key is bound to its first request, so another request with it is 409 BIZ107.",
+          "required": false,
+          "schema": {
             "type": "string"
           }
         }
@@ -7178,8 +8877,35 @@
         "tax_connection.read"
       ],
       "summary": "Get the tax connection",
-      "description": "`tax_connection.read`. The organisation’s connection to the tax authority in the token’s mode — its state, the key, what must happen next — or, with none, what stands between it and connecting. API keys may read it to learn whether a live submission will pass (`submissionsAllowed`).",
-      "parameters": [],
+      "description": "`tax_connection.read`. The organisation’s connection to the tax authority in the token’s mode — its state, the key, what must happen next — or, with none, what stands between it and connecting. API keys may read it to learn whether a live submission will pass (`submissionsAllowed`). R151: with the identifier switch on, `einvoicingIdentifier`, `identifierSource` and `identifierNextAction` say which number the tax authority holds for the organisation, when asked with `?identifier=true`; `?fresh=true` asks the authority again past the gateway’s cache (limited per organisation).",
+      "parameters": [
+        {
+          "name": "identifier",
+          "required": false,
+          "in": "query",
+          "description": "R151: resolve which number the tax authority holds for the organisation (a participant lookup). Without it, or `fresh`, I47 makes no lookup and the identifier fields are null. Ignored while the identifier switch is off or a live connection exists.",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        },
+        {
+          "name": "fresh",
+          "required": false,
+          "in": "query",
+          "description": "R151, the portal’s \"Check again\": ask the tax authority which number it holds, past the gateway’s cache. Implies `identifier`. Ignored while the identifier switch is off or a live connection exists.",
+          "schema": {
+            "enum": [
+              "true",
+              "false"
+            ],
+            "type": "string"
+          }
+        }
+      ],
       "requestBody": null,
       "responses": {
         "200": {
@@ -7867,6 +9593,434 @@
           }
         }
       }
+    },
+    {
+      "method": "GET",
+      "path": "/p/v1/accounts/current",
+      "operationId": "getCurrentBankAccount",
+      "tags": [
+        "Accounts",
+        "accounts"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "bank_account.read"
+      ],
+      "summary": "The organisation’s bank account",
+      "description": "Members and live API keys with `bank_account.read`. API keys: live keys (`sk_live_`) only — a test key (`sk_test_`) is 409 BIZ401 (`errors[0].mode = live_only`), and while API-key reads are switched off in this deployment every key is 409 BIZ401 (`errors[0].feature = disabled`). The account’s status, its own account number in full (the number the organisation gives its payers), the bank, the balance as the bank last answered it — refreshed first when older than the configured window; served with `stale: true` when the bank could not be asked — and whether it is billing’s settlement account. Live mode only. Polling: the balance is the stored snapshot, refreshed from the bank at most once per configured window (30 seconds by default) however often it is read, so polling faster returns the same figures; prefer the `payment.*` webhooks to learn of movements.",
+      "parameters": [],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The account.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/payments.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/payments.BankAccountDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/p/v1/accounts/current/transactions",
+      "operationId": "listBankAccountTransactions",
+      "tags": [
+        "Accounts",
+        "accounts"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "bank_account.read"
+      ],
+      "summary": "The account’s statement",
+      "description": "Members and live API keys with `bank_account.read`. API keys: live keys (`sk_live_`) only — a test key (`sk_test_`) is 409 BIZ401 (`errors[0].mode = live_only`), and while API-key reads are switched off in this deployment every key is 409 BIZ401 (`errors[0].feature = disabled`). The movements on the account as this service recorded them — incoming credits, their reversals, outbound transfers — newest first, in numbered pages (`page` from 1, `limit` 1–100, default 20; `meta.pagination` carries `total`, `totalPages`, `hasNext`, `hasPrevious`). Filters: `kind`, `status`, `direction`, `from`, `to`. A counterparty’s account number is its last four digits only. Polling: page with `from` set to the newest movement already seen; prefer the `payment.*` webhooks.",
+      "parameters": [
+        {
+          "name": "kind",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "inbound_credit",
+              "inbound_reversal",
+              "outbound_transfer",
+              "outbound_reversal",
+              "fee"
+            ]
+          }
+        },
+        {
+          "name": "status",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "completed",
+              "reversed",
+              "failed"
+            ]
+          }
+        },
+        {
+          "name": "direction",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "credit",
+              "debit"
+            ]
+          }
+        },
+        {
+          "name": "from",
+          "required": false,
+          "in": "query",
+          "description": "Rows that occurred at or after this instant.",
+          "schema": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        {
+          "name": "to",
+          "required": false,
+          "in": "query",
+          "description": "Rows that occurred at or before this instant.",
+          "schema": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "required": false,
+          "in": "query",
+          "description": "The page, from 1.",
+          "schema": {
+            "minimum": 1,
+            "default": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "in": "query",
+          "description": "Rows per page.",
+          "schema": {
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "type": "integer"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "One page, newest first; `meta.pagination` set.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/payments.ApiSuccessMetaDto"
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "pagination"
+                        ],
+                        "properties": {
+                          "pagination": {
+                            "$ref": "#/components/schemas/payments.ApiPaginationMetaDto"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/payments.TransactionDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/p/v1/accounts/current/transactions/{id}",
+      "operationId": "getBankAccountTransaction",
+      "tags": [
+        "Accounts",
+        "accounts"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "bank_account.read"
+      ],
+      "summary": "One movement on the account",
+      "description": "Members and live API keys with `bank_account.read`. API keys: live keys (`sk_live_`) only — a test key (`sk_test_`) is 409 BIZ401 (`errors[0].mode = live_only`), and while API-key reads are switched off in this deployment every key is 409 BIZ401 (`errors[0].feature = disabled`). Another organisation’s row, or the other mode’s, is not found.",
+      "parameters": [
+        {
+          "name": "id",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "format": "uuid"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The transaction.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/payments.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/payments.TransactionDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/p/v1/transfers",
+      "operationId": "listTransfers",
+      "tags": [
+        "Transfers",
+        "transfers"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "transfer.read"
+      ],
+      "summary": "The organisation’s transfers",
+      "description": "Members and live API keys with `transfer.read`. API keys: live keys (`sk_live_`) only — a test key (`sk_test_`) is 409 BIZ401 (`errors[0].mode = live_only`), and while API-key reads are switched off in this deployment every key is 409 BIZ401 (`errors[0].feature = disabled`). Newest first, in numbered pages (`page` from 1, `limit` 1–100, default 20; `meta.pagination` carries `total`, `totalPages`, `hasNext`, `hasPrevious`). Filters: `status`, `counterpartyId`, `from`, `to` (the authorisation instant). The counterparty’s account number is its last four digits only. Polling: prefer the `payment.transfer.*` webhooks; a key that polls should read one transfer, not the list.",
+      "parameters": [
+        {
+          "name": "status",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "type": "string",
+            "enum": [
+              "authorised",
+              "submitted",
+              "completed",
+              "failed",
+              "reversed",
+              "abandoned"
+            ]
+          }
+        },
+        {
+          "name": "counterpartyId",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        {
+          "name": "from",
+          "required": false,
+          "in": "query",
+          "description": "Transfers authorised at or after this instant.",
+          "schema": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        {
+          "name": "to",
+          "required": false,
+          "in": "query",
+          "description": "Transfers authorised at or before this instant.",
+          "schema": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        {
+          "name": "page",
+          "required": false,
+          "in": "query",
+          "description": "The page, from 1.",
+          "schema": {
+            "minimum": 1,
+            "default": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "in": "query",
+          "description": "Rows per page.",
+          "schema": {
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20,
+            "type": "integer"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "One page, newest first; `meta.pagination` set.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/payments.ApiSuccessMetaDto"
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "pagination"
+                        ],
+                        "properties": {
+                          "pagination": {
+                            "$ref": "#/components/schemas/payments.ApiPaginationMetaDto"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/payments.TransferDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/p/v1/transfers/{id}",
+      "operationId": "getTransfer",
+      "tags": [
+        "Transfers",
+        "transfers"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "transfer.read"
+      ],
+      "summary": "One transfer",
+      "description": "Members and live API keys with `transfer.read`. API keys: live keys (`sk_live_`) only — a test key (`sk_test_`) is 409 BIZ401 (`errors[0].mode = live_only`), and while API-key reads are switched off in this deployment every key is 409 BIZ401 (`errors[0].feature = disabled`). The transfer with its credits state and, when failed or reversed, a closed reason code. Another organisation’s row, or the other mode’s, is not found. Polling: prefer the `payment.transfer.*` webhooks; a key that polls should read one transfer, not the list.",
+      "parameters": [
+        {
+          "name": "id",
+          "required": true,
+          "in": "path",
+          "schema": {
+            "format": "uuid"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "The transfer.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/payments.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/payments.TransferDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "schemas": {
@@ -8045,6 +10199,17 @@
           "format": "date-time",
           "nullable": true
         },
+        "einvoicingTaxId": {
+          "type": "string",
+          "nullable": true,
+          "example": "33875194-0001",
+          "description": "The TIN NRS e-invoicing keys on (12345678-0001), verified: recorded beside a Tax ID, or the verified tax id itself when it is a TIN; null otherwise."
+        },
+        "einvoicingTaxIdVerifiedAt": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true
+        },
         "country": {
           "type": "string",
           "example": "NG"
@@ -8130,6 +10295,8 @@
         "tin",
         "tinStatus",
         "tinVerifiedAt",
+        "einvoicingTaxId",
+        "einvoicingTaxIdVerifiedAt",
         "country",
         "contactEmail",
         "contactPhone",
@@ -8258,6 +10425,48 @@
       "required": [
         "status",
         "verifiedAt"
+      ]
+    },
+    "billing.AccountPlanDto": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "active",
+            "no_plan",
+            "legacy"
+          ],
+          "description": "`active`: an invoice-capped plan; `legacy`: a credits plan (every feature); `no_plan`: no plan — reads and drafts only, payments kept."
+        },
+        "pricingModel": {
+          "type": "string",
+          "enum": [
+            "credits_v1",
+            "plans_v2"
+          ],
+          "description": "The model the account follows, set by the plan it last bought."
+        },
+        "planCode": {
+          "type": "string",
+          "description": "The governing plan code; `no_plan` with none."
+        },
+        "entitlements": {
+          "$ref": "#/components/schemas/billing.PlanEntitlementsDto"
+        },
+        "paidBy": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true,
+          "description": "The partner organisation that pays for this business’s plan; null when the organisation pays for itself or has no plan."
+        }
+      },
+      "required": [
+        "state",
+        "pricingModel",
+        "planCode",
+        "entitlements",
+        "paidBy"
       ]
     },
     "billing.AccountStatsDto": {
@@ -8556,6 +10765,28 @@
         "requestId"
       ]
     },
+    "billing.AppliedInvoiceDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "number": {
+          "type": "string",
+          "description": "The invoice’s number, as invoice answered it when the payment was applied."
+        },
+        "amountMinor": {
+          "type": "integer",
+          "description": "What this payment applied to the invoice."
+        }
+      },
+      "required": [
+        "id",
+        "number",
+        "amountMinor"
+      ]
+    },
     "billing.AvailablePlanDto": {
       "type": "object",
       "properties": {
@@ -8652,6 +10883,31 @@
         "transfer"
       ]
     },
+    "billing.BankDto": {
+      "type": "object",
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "description": "The rail’s bank id (on Paystack the same as `sortCode`)."
+        },
+        "name": {
+          "type": "string"
+        },
+        "sortCode": {
+          "type": "string",
+          "description": "The bank code the settlement-account routes take."
+        },
+        "ussdCode": {
+          "type": "string",
+          "description": "Not reported by the rail; absent."
+        }
+      },
+      "required": [
+        "uuid",
+        "name",
+        "sortCode"
+      ]
+    },
     "billing.BillingAccountDto": {
       "type": "object",
       "properties": {
@@ -8692,6 +10948,9 @@
         },
         "balances": {
           "$ref": "#/components/schemas/billing.LedgerBalancesDto"
+        },
+        "plan": {
+          "$ref": "#/components/schemas/billing.AccountPlanDto"
         }
       },
       "required": [
@@ -8702,7 +10961,55 @@
         "createdAt",
         "mode",
         "creditBalance",
-        "balances"
+        "balances",
+        "plan"
+      ]
+    },
+    "billing.BuyerCreditDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "example": "018f2b4c-0000-7000-8000-00000000b001:NGN"
+        },
+        "organizationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyerId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyerName": {
+          "type": "string",
+          "nullable": true,
+          "description": "The buyer’s most recent collection account’s `buyerName`."
+        },
+        "currency": {
+          "type": "string",
+          "example": "NGN"
+        },
+        "balanceMinor": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "organizationId",
+        "buyerId",
+        "buyerName",
+        "currency",
+        "balanceMinor",
+        "createdAt",
+        "updatedAt"
       ]
     },
     "billing.CheckBalanceDto": {
@@ -8722,6 +11029,519 @@
         "hasSufficientBalance",
         "requestedCredits",
         "currentBalance"
+      ]
+    },
+    "billing.CollectionAccountDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "paystack"
+          ]
+        },
+        "providerRef": {
+          "type": "string",
+          "description": "The server-made provider reference (`yc` + 32 hex)."
+        },
+        "accountNumber": {
+          "type": "string",
+          "nullable": true,
+          "description": "The virtual account number the buyer pays to."
+        },
+        "bankName": {
+          "type": "string",
+          "nullable": true
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "dynamic",
+            "persistent"
+          ]
+        },
+        "jurisdiction": {
+          "type": "string",
+          "example": "NG"
+        },
+        "currency": {
+          "type": "string",
+          "example": "NGN"
+        },
+        "accountReference": {
+          "type": "string",
+          "nullable": true,
+          "description": "A persistent account’s standing reference."
+        },
+        "organizationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sellerId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyerId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true
+        },
+        "sellerName": {
+          "type": "string"
+        },
+        "buyerName": {
+          "type": "string",
+          "nullable": true,
+          "description": "The create request’s `customer.name`, else the buyer’s name; null when the invoice names no buyer and no `customer.name` was sent."
+        },
+        "invoiceId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true
+        },
+        "invoiceNumber": {
+          "type": "string",
+          "nullable": true,
+          "description": "The invoice’s number when the account was opened (dynamic accounts); null for a persistent account and for an account opened before invoice numbers were stored."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "expired",
+            "deactivated"
+          ]
+        },
+        "expectedAmountMinor": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Dynamic accounts: the exact amount."
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true
+        },
+        "closedCause": {
+          "type": "string",
+          "enum": [
+            "user",
+            "expired",
+            "paid"
+          ],
+          "nullable": true,
+          "description": "Why a closed account closed: `paid` (a confirmed payment closed a dynamic account), `user` (deactivated by a person or key), `expired` (it lapsed). Null while the account is active."
+        },
+        "closedAt": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true,
+          "description": "When the account closed, for `closedCause` `paid` or `user`. Null while active and for an expired account (its `expiresAt` is when it lapsed)."
+        },
+        "settlementAccountId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "settlementCurrent": {
+          "type": "boolean",
+          "description": "False while the account still settles to a replaced settlement account."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "providerRef",
+        "accountNumber",
+        "bankName",
+        "kind",
+        "jurisdiction",
+        "currency",
+        "accountReference",
+        "organizationId",
+        "sellerId",
+        "buyerId",
+        "sellerName",
+        "buyerName",
+        "invoiceId",
+        "invoiceNumber",
+        "status",
+        "expectedAmountMinor",
+        "expiresAt",
+        "closedCause",
+        "closedAt",
+        "settlementAccountId",
+        "settlementCurrent",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "billing.CollectionAccountStatusDto": {
+      "type": "object",
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "not_found",
+            "unpaid",
+            "paid",
+            "expired",
+            "unknown"
+          ]
+        },
+        "settled": {
+          "type": "boolean",
+          "description": "True when the provider reports money received."
+        },
+        "amountMinor": {
+          "type": "integer",
+          "nullable": true
+        },
+        "currency": {
+          "type": "string",
+          "nullable": true
+        },
+        "checkedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "accountId",
+        "status",
+        "settled",
+        "amountMinor",
+        "currency",
+        "checkedAt"
+      ]
+    },
+    "billing.CollectionCustomerDto": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "pattern": "^\\+[1-9]\\d{6,14}$",
+          "example": "+2348012345678"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "billing.CollectionPaymentDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "provider": {
+          "type": "string",
+          "enum": [
+            "paystack"
+          ]
+        },
+        "transactionReference": {
+          "type": "string",
+          "description": "The rail’s transaction reference (`provider_event_key` without its prefix)."
+        },
+        "accountNumber": {
+          "type": "string",
+          "description": "The receiving collection account number."
+        },
+        "amountMinor": {
+          "type": "integer",
+          "description": "The gross credit; the invoice is applied at it."
+        },
+        "feeMinor": {
+          "type": "integer",
+          "description": "What the rail kept (the organisation bears the fee)."
+        },
+        "netMinor": {
+          "type": "integer",
+          "description": "`amountMinor − feeMinor`: what settles to the organisation."
+        },
+        "currency": {
+          "type": "string",
+          "example": "NGN"
+        },
+        "channel": {
+          "type": "string",
+          "enum": [
+            "bank_transfer",
+            "dedicated_nuban"
+          ],
+          "description": "How the buyer paid."
+        },
+        "payerName": {
+          "type": "string",
+          "nullable": true
+        },
+        "payerAccountLast4": {
+          "type": "string",
+          "nullable": true,
+          "description": "The last four digits only; the full number is never returned."
+        },
+        "payerBankName": {
+          "type": "string",
+          "nullable": true
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "success"
+          ],
+          "description": "Always `success`: only successful credits are recorded."
+        },
+        "collectionAccountId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "matchedInvoiceId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true,
+          "description": "`target_id` when the target is an invoice."
+        },
+        "organizationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyerId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true
+        },
+        "reconciled": {
+          "type": "boolean",
+          "description": "`appliedAmountMinor > 0`."
+        },
+        "reconciliationStatus": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "applied",
+            "overpaid",
+            "unmatched",
+            "returned_by_provider",
+            "reversed"
+          ]
+        },
+        "exceptionReason": {
+          "type": "string",
+          "enum": [
+            "overpayment",
+            "no_open_invoice",
+            "target_not_found",
+            "target_not_collectible",
+            "invoice_already_paid",
+            "currency_mismatch",
+            "amount_mismatch",
+            "account_inactive",
+            "unconfirmed",
+            "provider_denied",
+            "buyer_archived"
+          ],
+          "nullable": true
+        },
+        "confirmation": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "confirmed",
+            "unconfirmed",
+            "denied"
+          ]
+        },
+        "appliedAmountMinor": {
+          "type": "integer"
+        },
+        "unappliedAmountMinor": {
+          "type": "integer",
+          "description": "`amountMinor − appliedAmountMinor − refundedAmountMinor`."
+        },
+        "refundedAmountMinor": {
+          "type": "integer"
+        },
+        "appliedInvoiceIds": {
+          "description": "The distinct invoices the payment’s allocations paid, oldest first.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "appliedInvoices": {
+          "description": "The invoices the payment’s allocations paid, with their numbers and what was applied to each; oldest first, in `appliedInvoiceIds` order. Empty when nothing was applied.",
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/billing.AppliedInvoiceDto"
+          }
+        },
+        "settlementStatus": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "settled",
+            "failed"
+          ],
+          "description": "Whether the rail has paid the net out to the settlement account: `pending` until `settlement.success` (`settled`) or `settlement.failed` (`failed`); the invoice is applied either way."
+        },
+        "refundsEnabled": {
+          "type": "boolean",
+          "description": "Whether this deployment issues provider refunds. False: the refund route answers 409 `BIZ004` `refunds_disabled` for every payment, so a client hides the refund action. True does not promise this payment is refundable — the refund route still checks its state."
+        },
+        "receivedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "provider",
+        "transactionReference",
+        "accountNumber",
+        "amountMinor",
+        "feeMinor",
+        "netMinor",
+        "currency",
+        "channel",
+        "payerName",
+        "payerAccountLast4",
+        "payerBankName",
+        "status",
+        "collectionAccountId",
+        "matchedInvoiceId",
+        "organizationId",
+        "buyerId",
+        "reconciled",
+        "reconciliationStatus",
+        "exceptionReason",
+        "confirmation",
+        "appliedAmountMinor",
+        "unappliedAmountMinor",
+        "refundedAmountMinor",
+        "appliedInvoiceIds",
+        "appliedInvoices",
+        "settlementStatus",
+        "refundsEnabled",
+        "receivedAt",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "billing.CollectionQuoteDto": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "enum": [
+            "paystack"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "example": "Paystack",
+          "description": "The provider’s name for a person to read."
+        },
+        "available": {
+          "type": "boolean",
+          "description": "Whether an account of this kind could be opened for this amount now."
+        },
+        "unavailableReason": {
+          "type": "string",
+          "enum": [
+            "settlement_account_required",
+            "not_available_yet",
+            "exceeds_single_transfer",
+            "below_minimum"
+          ],
+          "description": "Present only when `available` is false."
+        },
+        "currency": {
+          "type": "string",
+          "example": "NGN"
+        },
+        "amountMinor": {
+          "type": "integer",
+          "example": 12900000,
+          "description": "The amount quoted, echoed."
+        },
+        "feeMinor": {
+          "type": "integer",
+          "example": 200000,
+          "description": "The estimated provider fee on one transfer of `amountMinor`, which the organisation bears."
+        },
+        "netMinor": {
+          "type": "integer",
+          "example": 12700000,
+          "description": "`amountMinor − feeMinor`: what the organisation is expected to receive."
+        },
+        "basis": {
+          "type": "string",
+          "example": "1.5% + ₦100, capped at ₦2,000; ₦100 waived under ₦2,500",
+          "description": "The configured pricing, in words."
+        },
+        "asOf": {
+          "type": "string",
+          "format": "date",
+          "example": "2026-10-10",
+          "description": "When the pricing was last confirmed."
+        },
+        "maxAmountMinor": {
+          "type": "integer",
+          "nullable": true,
+          "description": "The most one account of this kind may carry (`dynamic`: one bank transfer); null when unbounded."
+        },
+        "maxTtlSeconds": {
+          "type": "integer",
+          "nullable": true,
+          "description": "The longest life an account of this kind may be given (`dynamic`); null for a standing account."
+        }
+      },
+      "required": [
+        "provider",
+        "label",
+        "available",
+        "currency",
+        "amountMinor",
+        "feeMinor",
+        "netMinor",
+        "basis",
+        "asOf",
+        "maxAmountMinor",
+        "maxTtlSeconds"
       ]
     },
     "billing.CostCodeUsageDto": {
@@ -8748,6 +11568,311 @@
         "label",
         "count",
         "credits"
+      ]
+    },
+    "billing.CreateCollectionAccountDto": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "dynamic",
+            "persistent"
+          ]
+        },
+        "reference": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{8,64}$",
+          "description": "The caller’s idempotency reference; the same reference with the same body replays."
+        },
+        "invoiceId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Required for `dynamic`; refused for `persistent`."
+        },
+        "buyerId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Required for `persistent`; optional for `dynamic` (must be the invoice’s buyer)."
+        },
+        "amountMinor": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "`dynamic` only: at least `COLLECTION_DYNAMIC_MIN_MINOR`, at most the invoice’s outstanding; default the outstanding."
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "`dynamic` only: a future instant within the configured TTL bounds; default the configured TTL."
+        },
+        "currency": {
+          "type": "string",
+          "enum": [
+            "NGN"
+          ],
+          "description": "For `dynamic` it must equal the invoice’s."
+        },
+        "jurisdiction": {
+          "type": "string",
+          "enum": [
+            "NG"
+          ]
+        },
+        "sellerId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "When given, must be the self-seller id (else 404)."
+        },
+        "customer": {
+          "description": "Defaults to the buyer’s record from invoice.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/billing.CollectionCustomerDto"
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "reference"
+      ]
+    },
+    "billing.DeactivateCollectionAccountDto": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "maxLength": 255
+        }
+      }
+    },
+    "billing.DealCapsDto": {
+      "type": "object",
+      "properties": {
+        "invoiceCount": {
+          "type": "integer"
+        },
+        "invoiceValueMinor": {
+          "type": "integer"
+        },
+        "gracePercent": {
+          "type": "integer",
+          "description": "Grace past either cap, percent."
+        }
+      },
+      "required": [
+        "invoiceCount",
+        "invoiceValueMinor",
+        "gracePercent"
+      ]
+    },
+    "billing.DealOfferDto": {
+      "type": "object",
+      "properties": {
+        "planCode": {
+          "type": "string",
+          "example": "deal_0199a1b27c3d7e4f8a9b000000000001"
+        },
+        "name": {
+          "type": "string",
+          "example": "Enterprise"
+        },
+        "prices": {
+          "description": "Monthly and yearly (10 × monthly), NGN.",
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/billing.DealPriceDto"
+          }
+        },
+        "caps": {
+          "$ref": "#/components/schemas/billing.DealCapsDto"
+        },
+        "monthlyCredits": {
+          "type": "integer"
+        },
+        "membersPerOrganization": {
+          "type": "integer",
+          "nullable": true,
+          "description": "null = unlimited."
+        },
+        "subOrgPercentBp": {
+          "type": "integer",
+          "description": "Each sub-organisation’s share of the fee, bp."
+        },
+        "discountBp": {
+          "type": "integer",
+          "nullable": true,
+          "description": "A Strategic partner deal: the discount on each business’s plan, bp; null otherwise."
+        },
+        "dealId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "offeredAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "planCode",
+        "name",
+        "prices",
+        "caps",
+        "monthlyCredits",
+        "membersPerOrganization",
+        "subOrgPercentBp",
+        "discountBp",
+        "dealId",
+        "offeredAt"
+      ]
+    },
+    "billing.DealPriceDto": {
+      "type": "object",
+      "properties": {
+        "interval": {
+          "type": "string",
+          "enum": [
+            "monthly",
+            "yearly"
+          ]
+        },
+        "priceMinor": {
+          "type": "integer",
+          "description": "Before VAT."
+        },
+        "vatMinor": {
+          "type": "integer"
+        },
+        "totalMinor": {
+          "type": "integer",
+          "description": "What checkout charges."
+        }
+      },
+      "required": [
+        "interval",
+        "priceMinor",
+        "vatMinor",
+        "totalMinor"
+      ]
+    },
+    "billing.InvoiceUsageCountDto": {
+      "type": "object",
+      "properties": {
+        "used": {
+          "type": "integer",
+          "description": "Invoices counted this month (first finalised)."
+        },
+        "cap": {
+          "type": "integer",
+          "nullable": true,
+          "description": "The plan’s monthly cap; null when uncapped."
+        },
+        "extra": {
+          "type": "integer",
+          "description": "Invoices added by overage packs this month."
+        },
+        "ceiling": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Where finalising stops: the cap plus the grace, then the packs; null when uncapped."
+        }
+      },
+      "required": [
+        "used",
+        "cap",
+        "extra",
+        "ceiling"
+      ]
+    },
+    "billing.InvoiceUsageDto": {
+      "type": "object",
+      "properties": {
+        "planCode": {
+          "type": "string",
+          "example": "plan_starter"
+        },
+        "periodStart": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "periodEnd": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "count": {
+          "$ref": "#/components/schemas/billing.InvoiceUsageCountDto"
+        },
+        "value": {
+          "$ref": "#/components/schemas/billing.InvoiceUsageValueDto"
+        },
+        "gracePercent": {
+          "type": "integer",
+          "description": "The grace over each cap, in percent."
+        },
+        "thresholdsCrossed": {
+          "$ref": "#/components/schemas/billing.InvoiceUsageThresholdsDto"
+        }
+      },
+      "required": [
+        "planCode",
+        "periodStart",
+        "periodEnd",
+        "count",
+        "value",
+        "gracePercent",
+        "thresholdsCrossed"
+      ]
+    },
+    "billing.InvoiceUsageThresholdsDto": {
+      "type": "object",
+      "properties": {
+        "count": {
+          "description": "Percent of the count cap already passed and notified.",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "value": {
+          "description": "Percent of the value cap already passed and notified.",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": [
+        "count",
+        "value"
+      ]
+    },
+    "billing.InvoiceUsageValueDto": {
+      "type": "object",
+      "properties": {
+        "usedMinor": {
+          "type": "integer",
+          "description": "Value counted this month, in naira minor units."
+        },
+        "capMinor": {
+          "type": "integer",
+          "nullable": true,
+          "description": "The plan’s monthly value cap; null when uncapped."
+        },
+        "extraMinor": {
+          "type": "integer",
+          "description": "Value added by overage packs this month."
+        },
+        "ceilingMinor": {
+          "type": "integer",
+          "nullable": true,
+          "description": "Where finalising stops: the cap plus the grace, then the packs; null when uncapped."
+        }
+      },
+      "required": [
+        "usedMinor",
+        "capMinor",
+        "extraMinor",
+        "ceilingMinor"
       ]
     },
     "billing.LedgerBalanceDto": {
@@ -8835,7 +11960,8 @@
             "pool_out",
             "pool_in",
             "pool_return_out",
-            "pool_return_in"
+            "pool_return_in",
+            "included"
           ]
         },
         "credits": {
@@ -8992,6 +12118,703 @@
         "at"
       ]
     },
+    "billing.OverageQuoteDto": {
+      "type": "object",
+      "properties": {
+        "capPercent": {
+          "type": "integer",
+          "description": "How much more of each monthly cap the pack adds, in percent."
+        },
+        "pricePercent": {
+          "type": "integer",
+          "description": "Its price as a percent of the plan’s monthly fee."
+        },
+        "netMinor": {
+          "type": "integer",
+          "description": "The price before VAT, in minor units."
+        },
+        "vatMinor": {
+          "type": "integer",
+          "description": "The VAT on it (7.5%), in minor units."
+        },
+        "totalMinor": {
+          "type": "integer",
+          "description": "What the checkout charges: net plus VAT."
+        },
+        "currency": {
+          "type": "string",
+          "example": "NGN"
+        },
+        "periodEnd": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The end of the month the pack applies to."
+        }
+      },
+      "required": [
+        "capPercent",
+        "pricePercent",
+        "netMinor",
+        "vatMinor",
+        "totalMinor",
+        "currency",
+        "periodEnd"
+      ]
+    },
+    "billing.PartnerBasketQuoteDto": {
+      "type": "object",
+      "properties": {
+        "lines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/billing.PartnerBasketQuoteLineDto"
+          }
+        },
+        "tierMove": {
+          "nullable": true,
+          "description": "Set when the basket takes the partner past its tier’s ceiling: it moves up now, every seat in the basket is priced at the new tier’s discount, and the charge includes the access fee difference.",
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/billing.PartnerTierMoveQuoteDto"
+            }
+          ]
+        },
+        "discountBp": {
+          "type": "integer",
+          "description": "The discount on each seat, in basis points."
+        },
+        "netMinor": {
+          "type": "integer",
+          "description": "Every line and any access fee difference, before VAT."
+        },
+        "vatMinor": {
+          "type": "integer",
+          "description": "The VAT on it (7.5%)."
+        },
+        "totalMinor": {
+          "type": "integer",
+          "description": "What the checkout charges."
+        },
+        "renewalMinor": {
+          "type": "integer",
+          "description": "What the seats add to each renewal, before VAT."
+        },
+        "periodEnd": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The seats are paid to this date."
+        },
+        "capacity": {
+          "description": "What the partner holds before this basket, and how many more it may add.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/billing.PartnerCapacityDto"
+            }
+          ]
+        }
+      },
+      "required": [
+        "lines",
+        "tierMove",
+        "discountBp",
+        "netMinor",
+        "vatMinor",
+        "totalMinor",
+        "renewalMinor",
+        "periodEnd",
+        "capacity"
+      ]
+    },
+    "billing.PartnerBasketQuoteLineDto": {
+      "type": "object",
+      "properties": {
+        "planCode": {
+          "type": "string",
+          "example": "plan_growth"
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "unitMinor": {
+          "type": "integer",
+          "description": "Each seat’s monthly price at the discount: what it adds to each renewal."
+        },
+        "unitChargedMinor": {
+          "type": "integer",
+          "description": "Each seat for the days left, before VAT."
+        },
+        "netMinor": {
+          "type": "integer",
+          "description": "The line for the days left, before VAT."
+        }
+      },
+      "required": [
+        "planCode",
+        "quantity",
+        "unitMinor",
+        "unitChargedMinor",
+        "netMinor"
+      ]
+    },
+    "billing.PartnerBusinessDto": {
+      "type": "object",
+      "properties": {
+        "organizationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "planCode": {
+          "type": "string",
+          "example": "plan_starter"
+        },
+        "priceMinor": {
+          "type": "integer",
+          "description": "Its monthly price at the partner’s discount, before VAT."
+        },
+        "releasing": {
+          "type": "boolean",
+          "description": "Released: it leaves at the next renewal and is not charged again."
+        },
+        "planChange": {
+          "nullable": true,
+          "description": "Its open plan change: an upgrade being paid or a downgrade scheduled.",
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/billing.PartnerPlanChangeViewDto"
+            }
+          ]
+        }
+      },
+      "required": [
+        "organizationId",
+        "planCode",
+        "priceMinor",
+        "releasing",
+        "planChange"
+      ]
+    },
+    "billing.PartnerCapacityDto": {
+      "type": "object",
+      "properties": {
+        "held": {
+          "type": "integer",
+          "description": "Its businesses that renew (released ones excluded) and its waiting seats."
+        },
+        "tier": {
+          "type": "string",
+          "enum": [
+            "launch",
+            "scale",
+            "platform"
+          ],
+          "nullable": true,
+          "description": "The tier it is on now; null while a Strategic partner agreement sets its ceiling."
+        },
+        "ceiling": {
+          "type": "integer",
+          "description": "The most it may hold on its tier (Launch 9, Scale 99, Platform 999), or its Strategic agreement’s."
+        },
+        "canAdd": {
+          "type": "integer",
+          "description": "How many more it may add on its tier."
+        },
+        "canAddInAll": {
+          "type": "integer",
+          "description": "How many more it may add in all, moving up a tier as it needs; past that, a Strategic agreement."
+        }
+      },
+      "required": [
+        "held",
+        "tier",
+        "ceiling",
+        "canAdd",
+        "canAddInAll"
+      ]
+    },
+    "billing.PartnerOfferDto": {
+      "type": "object",
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": [
+            "launch",
+            "scale",
+            "platform"
+          ]
+        },
+        "planCode": {
+          "type": "string",
+          "example": "partner_scale",
+          "description": "Buy it with `POST /b/v1/subscriptions {planCode}`."
+        },
+        "name": {
+          "type": "string",
+          "example": "Partner Scale"
+        },
+        "prices": {
+          "description": "The access fee: before VAT, the VAT and the total, NGN.",
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/billing.DealPriceDto"
+          }
+        },
+        "discountBp": {
+          "type": "integer",
+          "description": "Off each business’s Direct plan, in basis points (6000 = 60%)."
+        },
+        "monthlyCredits": {
+          "type": "integer",
+          "description": "The partner’s own credits each month."
+        },
+        "caps": {
+          "description": "The partner’s own invoicing allowance (Starter’s caps).",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/billing.DealCapsDto"
+            }
+          ]
+        }
+      },
+      "required": [
+        "tier",
+        "planCode",
+        "name",
+        "prices",
+        "discountBp",
+        "monthlyCredits",
+        "caps"
+      ]
+    },
+    "billing.PartnerPlanChangeQuoteDto": {
+      "type": "object",
+      "properties": {
+        "organizationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The business."
+        },
+        "fromPlanCode": {
+          "type": "string",
+          "example": "plan_starter"
+        },
+        "planCode": {
+          "type": "string",
+          "example": "plan_growth"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "upgrade",
+            "downgrade"
+          ],
+          "description": "Dearer a month is an upgrade, made now; anything else waits for the renewal."
+        },
+        "discountBp": {
+          "type": "integer",
+          "description": "The partner’s discount, in basis points."
+        },
+        "netMinor": {
+          "type": "integer",
+          "description": "An upgrade: the discounted difference for the days left, before VAT. A downgrade: 0."
+        },
+        "vatMinor": {
+          "type": "integer",
+          "description": "The VAT on it (7.5%)."
+        },
+        "totalMinor": {
+          "type": "integer",
+          "description": "What the checkout charges the partner now."
+        },
+        "renewalMinor": {
+          "type": "integer",
+          "description": "What the business adds to each renewal on the new plan, before VAT."
+        },
+        "effectiveAt": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true,
+          "description": "A downgrade: the renewal it applies at. An upgrade: null (it applies when paid)."
+        }
+      },
+      "required": [
+        "organizationId",
+        "fromPlanCode",
+        "planCode",
+        "direction",
+        "discountBp",
+        "netMinor",
+        "vatMinor",
+        "totalMinor",
+        "renewalMinor",
+        "effectiveAt"
+      ]
+    },
+    "billing.PartnerPlanChangeViewDto": {
+      "type": "object",
+      "properties": {
+        "changeId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "upgrade",
+            "downgrade"
+          ],
+          "description": "An upgrade is made when its payment settles; a downgrade at the partner’s renewal."
+        },
+        "planCode": {
+          "type": "string",
+          "example": "plan_growth",
+          "description": "The Direct plan it moves the business to."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "scheduled",
+            "applied",
+            "expired",
+            "cancelled"
+          ],
+          "description": "`pending`: an upgrade awaiting its payment; `scheduled`: a downgrade awaiting the renewal."
+        },
+        "effectiveAt": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true,
+          "description": "A downgrade: the renewal it applies at. An upgrade: its settlement, once applied."
+        }
+      },
+      "required": [
+        "changeId",
+        "direction",
+        "planCode",
+        "status",
+        "effectiveAt"
+      ]
+    },
+    "billing.PartnerRenewalDto": {
+      "type": "object",
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": [
+            "launch",
+            "scale",
+            "platform"
+          ],
+          "description": "The tier the business count lands in at the next renewal."
+        },
+        "strategic": {
+          "type": "boolean",
+          "description": "The next renewal is priced by a Strategic partner agreement, not the tier."
+        },
+        "feeMinor": {
+          "type": "integer",
+          "description": "The access fee it charges, before VAT."
+        },
+        "discountBp": {
+          "type": "integer",
+          "description": "The discount it gives each business’s plan, in basis points."
+        },
+        "netMinor": {
+          "type": "integer",
+          "description": "Before VAT: the access fee plus every renewing business."
+        },
+        "vatMinor": {
+          "type": "integer",
+          "description": "The VAT on it (7.5%)."
+        },
+        "totalMinor": {
+          "type": "integer",
+          "description": "What the renewal charges."
+        },
+        "waitingSeats": {
+          "type": "integer",
+          "description": "The waiting seats it renews; they count toward the tier with the businesses."
+        }
+      },
+      "required": [
+        "tier",
+        "strategic",
+        "feeMinor",
+        "discountBp",
+        "netMinor",
+        "vatMinor",
+        "totalMinor",
+        "waitingSeats"
+      ]
+    },
+    "billing.PartnerSeatCheckoutDto": {
+      "type": "object",
+      "properties": {
+        "paymentId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "checkoutUrl": {
+          "type": "string",
+          "nullable": true,
+          "description": "Where the partner pays; null when the provider has not opened it."
+        },
+        "totalMinor": {
+          "type": "integer",
+          "description": "What it charges, with VAT."
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "It can be paid until then."
+        },
+        "seats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/billing.PartnerSeatCountDto"
+          }
+        },
+        "movesToTier": {
+          "type": "string",
+          "enum": [
+            "launch",
+            "scale",
+            "platform"
+          ],
+          "nullable": true,
+          "description": "The tier it moves the partner to when paid; null when it keeps the tier."
+        }
+      },
+      "required": [
+        "paymentId",
+        "checkoutUrl",
+        "totalMinor",
+        "expiresAt",
+        "seats",
+        "movesToTier"
+      ]
+    },
+    "billing.PartnerSeatCountDto": {
+      "type": "object",
+      "properties": {
+        "planCode": {
+          "type": "string",
+          "example": "plan_growth"
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "planCode",
+        "quantity"
+      ]
+    },
+    "billing.PartnerSeatDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "planCode": {
+          "type": "string",
+          "example": "plan_growth"
+        },
+        "periodEnd": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Paid to this date. It renews with the monthly charge until a business takes it or it is released."
+        },
+        "renewalMinor": {
+          "type": "integer",
+          "description": "What it adds to the next renewal, before VAT (0 once released)."
+        },
+        "chosen": {
+          "type": "boolean",
+          "description": "Chosen for the next business created; else the oldest is taken."
+        },
+        "releasing": {
+          "type": "boolean",
+          "description": "Released: still usable until the next renewal, which ends it; it is not charged again."
+        }
+      },
+      "required": [
+        "id",
+        "planCode",
+        "periodEnd",
+        "renewalMinor",
+        "chosen",
+        "releasing"
+      ]
+    },
+    "billing.PartnerSeatQuoteDto": {
+      "type": "object",
+      "properties": {
+        "planCode": {
+          "type": "string",
+          "example": "plan_growth"
+        },
+        "discountBp": {
+          "type": "integer",
+          "description": "The discount on the plan, in basis points."
+        },
+        "netMinor": {
+          "type": "integer",
+          "description": "For the days left in this period, before VAT."
+        },
+        "vatMinor": {
+          "type": "integer",
+          "description": "The VAT on it (7.5%)."
+        },
+        "totalMinor": {
+          "type": "integer",
+          "description": "What the checkout charges."
+        },
+        "renewalMinor": {
+          "type": "integer",
+          "description": "What the business adds to each renewal, before VAT."
+        },
+        "periodEnd": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "tierMove": {
+          "nullable": true,
+          "description": "Set when the seat takes the partner past its tier’s ceiling: it moves up now, and the charge includes the access fee difference.",
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/billing.PartnerTierMoveQuoteDto"
+            }
+          ]
+        }
+      },
+      "required": [
+        "planCode",
+        "discountBp",
+        "netMinor",
+        "vatMinor",
+        "totalMinor",
+        "renewalMinor",
+        "periodEnd",
+        "tierMove"
+      ]
+    },
+    "billing.PartnerTierMoveQuoteDto": {
+      "type": "object",
+      "properties": {
+        "fromTier": {
+          "type": "string",
+          "enum": [
+            "launch",
+            "scale",
+            "platform"
+          ]
+        },
+        "toTier": {
+          "type": "string",
+          "enum": [
+            "launch",
+            "scale",
+            "platform"
+          ],
+          "description": "The tier the new count lands in."
+        },
+        "feeMinor": {
+          "type": "integer",
+          "description": "The new tier’s monthly access fee, before VAT."
+        },
+        "feeDifferenceMinor": {
+          "type": "integer",
+          "description": "The access fee difference for the days left in this period, before VAT."
+        },
+        "discountBp": {
+          "type": "integer",
+          "description": "The new tier’s discount on each business’s plan, in basis points."
+        }
+      },
+      "required": [
+        "fromTier",
+        "toTier",
+        "feeMinor",
+        "feeDifferenceMinor",
+        "discountBp"
+      ]
+    },
+    "billing.PartnerViewDto": {
+      "type": "object",
+      "properties": {
+        "tier": {
+          "type": "string",
+          "enum": [
+            "launch",
+            "scale",
+            "platform"
+          ]
+        },
+        "strategic": {
+          "type": "boolean",
+          "description": "This period is priced by a Strategic partner agreement (its fee and discount below), not the tier."
+        },
+        "feeMinor": {
+          "type": "integer",
+          "description": "The tier’s monthly access fee, before VAT."
+        },
+        "discountBp": {
+          "type": "integer",
+          "description": "The discount on each business’s plan, in basis points."
+        },
+        "periodEnd": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "businesses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/billing.PartnerBusinessDto"
+          }
+        },
+        "unassignedSeats": {
+          "description": "Waiting seats: paid for, no business on them yet. Oldest first.",
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/billing.PartnerSeatDto"
+          }
+        },
+        "capacity": {
+          "$ref": "#/components/schemas/billing.PartnerCapacityDto"
+        },
+        "openCheckout": {
+          "nullable": true,
+          "description": "The seat checkout waiting for its payment, if any.",
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/billing.PartnerSeatCheckoutDto"
+            }
+          ]
+        },
+        "nextRenewal": {
+          "$ref": "#/components/schemas/billing.PartnerRenewalDto"
+        }
+      },
+      "required": [
+        "tier",
+        "strategic",
+        "feeMinor",
+        "discountBp",
+        "periodEnd",
+        "businesses",
+        "unassignedSeats",
+        "capacity",
+        "openCheckout",
+        "nextRenewal"
+      ]
+    },
     "billing.PaymentDetailDto": {
       "type": "object",
       "properties": {
@@ -9004,7 +12827,11 @@
           "enum": [
             "credit_purchase",
             "subscription",
-            "renewal"
+            "renewal",
+            "sub_org_slot",
+            "overage_pack",
+            "partner_seat",
+            "partner_plan_change"
           ]
         },
         "status": {
@@ -9105,7 +12932,11 @@
           "enum": [
             "credit_purchase",
             "subscription",
-            "renewal"
+            "renewal",
+            "sub_org_slot",
+            "overage_pack",
+            "partner_seat",
+            "partner_plan_change"
           ]
         },
         "status": {
@@ -9255,19 +13086,20 @@
           "type": "integer",
           "description": "The new plan’s credits per monthly window."
         },
-        "creditMinor": {
-          "type": "integer",
-          "description": "The value of the paid period’s allocation windows not yet issued, credited against the new price (0 at period end)."
-        },
         "amountDueMinor": {
           "type": "integer",
           "nullable": true,
-          "description": "What the checkout charges (new price less the credit); null for a period-end change."
+          "description": "What the checkout charges before VAT — the difference between the two prices pro-rated to the days left (R145), or the full new price; null for a period-end change."
         },
-        "windowsUnissued": {
+        "daysLeft": {
           "type": "integer",
           "nullable": true,
-          "description": "Allocation windows of the paid period credited and never issued; null for a period-end change."
+          "description": "R145: the whole days left in the period the change was priced on (a started day counts); null when the full price was charged, and for a period-end change."
+        },
+        "periodDays": {
+          "type": "integer",
+          "nullable": true,
+          "description": "The whole days of that period; null with daysLeft."
         },
         "effectiveAt": {
           "type": "string",
@@ -9303,9 +13135,9 @@
         "currency",
         "recurringAmountMinor",
         "monthlyCredits",
-        "creditMinor",
         "amountDueMinor",
-        "windowsUnissued",
+        "daysLeft",
+        "periodDays",
         "effectiveAt",
         "paymentId",
         "targetSubscriptionId",
@@ -9389,7 +13221,9 @@
             "payment_not_clear",
             "not_active",
             "cancel_scheduled",
-            "checkout_in_progress"
+            "checkout_in_progress",
+            "paid_by_partner",
+            "partner_plan"
           ],
           "nullable": true,
           "description": "Why a change now is not available; null when it is."
@@ -9398,25 +13232,21 @@
           "type": "string",
           "format": "date-time",
           "nullable": true,
-          "description": "`window_boundary_near` only: the instant after which a new quote can be given."
-        },
-        "creditMinor": {
-          "type": "integer",
-          "description": "The value of the paid period’s unissued allowance windows."
+          "description": "The instant after which a new quote can be given, when a refusal names one; null otherwise (`window_boundary_near` now means the period end is too near for a checkout: change at the period end instead)."
         },
         "amountDueMinor": {
           "type": "integer",
-          "description": "The new price less the credit — what the checkout would charge (negative: the change is available at period end only)."
+          "description": "What the checkout would charge before VAT (R145): the difference between the two prices pro-rated to the days left in the period — negative for a downgrade, which is available at period end only — or the full new price when nothing is pro-rated (`daysLeft` null)."
         },
-        "windowsUnissued": {
-          "type": "integer"
-        },
-        "windowsInPeriod": {
+        "daysLeft": {
           "type": "integer",
-          "enum": [
-            1,
-            12
-          ]
+          "nullable": true,
+          "description": "The whole days left in the current period (a started day counts) the quote is pro-rated to; null when the full price is quoted (`past_due`, the period over, or a change of interval)."
+        },
+        "periodDays": {
+          "type": "integer",
+          "nullable": true,
+          "description": "The whole days of the current period; null with daysLeft."
         },
         "quoteValidSeconds": {
           "type": "integer",
@@ -9427,10 +13257,9 @@
         "available",
         "reason",
         "retryAt",
-        "creditMinor",
         "amountDueMinor",
-        "windowsUnissued",
-        "windowsInPeriod",
+        "daysLeft",
+        "periodDays",
         "quoteValidSeconds"
       ]
     },
@@ -9452,7 +13281,9 @@
             "payment_not_clear",
             "not_active",
             "cancel_scheduled",
-            "checkout_in_progress"
+            "checkout_in_progress",
+            "paid_by_partner",
+            "partner_plan"
           ],
           "nullable": true,
           "description": "Why a change at period end is not available; null when it is."
@@ -9512,6 +13343,28 @@
         "monthlyCredits"
       ]
     },
+    "billing.PlanEntitlementsDto": {
+      "type": "object",
+      "properties": {
+        "assistant": {
+          "type": "boolean",
+          "description": "The assistant, in the dashboard."
+        },
+        "whatsapp": {
+          "type": "boolean",
+          "description": "The assistant on WhatsApp."
+        },
+        "payments": {
+          "type": "boolean",
+          "description": "The bank account, transfers and collections."
+        }
+      },
+      "required": [
+        "assistant",
+        "whatsapp",
+        "payments"
+      ]
+    },
     "billing.PlanLimitsDto": {
       "type": "object",
       "properties": {
@@ -9550,6 +13403,45 @@
         "buyers",
         "invoices"
       ]
+    },
+    "billing.PlanRecommendationDto": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "example": "plan_growth"
+        },
+        "needsSales": {
+          "type": "boolean",
+          "description": "No Direct plan covers the busiest month: offer a sales call."
+        }
+      },
+      "required": [
+        "code",
+        "needsSales"
+      ]
+    },
+    "billing.ResolveCollectionExceptionDto": {
+      "type": "object",
+      "properties": {
+        "invoiceId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "buyerId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "resolution": {
+          "type": "string",
+          "enum": [
+            "apply_to_invoice",
+            "apply_to_buyer",
+            "refund_recorded_externally"
+          ],
+          "description": "Inferred from the target when absent; `refund_recorded_externally` takes no target."
+        }
+      }
     },
     "billing.SandboxBalanceDto": {
       "type": "object",
@@ -9596,6 +13488,93 @@
         "creditsRemaining",
         "periodStart",
         "periodEnd"
+      ]
+    },
+    "billing.SettlementAccountDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "organizationId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "sellerId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The organisation’s self-seller id in this mode."
+        },
+        "bankCode": {
+          "type": "string",
+          "description": "The bank code the enquiry verified (`Bank.sortCode`)."
+        },
+        "bankName": {
+          "type": "string"
+        },
+        "accountNumber": {
+          "type": "string",
+          "example": "******6789",
+          "description": "Masked: the last four digits only."
+        },
+        "accountNumberLast4": {
+          "type": "string",
+          "example": "6789"
+        },
+        "accountName": {
+          "type": "string",
+          "description": "The holder’s name as the bank returned it — never typed."
+        },
+        "currency": {
+          "type": "string",
+          "example": "NGN"
+        },
+        "verified": {
+          "type": "boolean",
+          "description": "Always true: an unverified account is never stored."
+        },
+        "verifiedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "inactive"
+          ]
+        },
+        "unreachable": {
+          "type": "boolean",
+          "description": "True when the bank account this row names was closed at the banking partner (the organisation’s payments account, docs/specs/payments.md §2.8): payouts cannot reach it until a new settlement account is registered."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "`replacedAt` for a replaced row, else `createdAt` (a row is never edited in place)."
+        }
+      },
+      "required": [
+        "id",
+        "organizationId",
+        "sellerId",
+        "bankCode",
+        "bankName",
+        "accountNumber",
+        "accountNumberLast4",
+        "accountName",
+        "currency",
+        "verified",
+        "verifiedAt",
+        "status",
+        "unreachable",
+        "createdAt",
+        "updatedAt"
       ]
     },
     "billing.SetupBillingAccountDto": {
@@ -9808,7 +13787,11 @@
           "enum": [
             "credit_purchase",
             "subscription",
-            "renewal"
+            "renewal",
+            "sub_org_slot",
+            "overage_pack",
+            "partner_seat",
+            "partner_plan_change"
           ]
         },
         "amountMinor": {
@@ -9898,6 +13881,59 @@
       "required": [
         "in",
         "out"
+      ]
+    },
+    "billing.SubOrgSlotQuoteDto": {
+      "type": "object",
+      "properties": {
+        "percentBp": {
+          "type": "integer",
+          "description": "A slot’s share of the plan’s fee, in basis points (1,000 = 10%)."
+        },
+        "slots": {
+          "type": "integer",
+          "description": "Slots held now."
+        },
+        "releasing": {
+          "type": "integer",
+          "description": "Of those, how many end at the next renewal."
+        },
+        "netMinor": {
+          "type": "integer",
+          "description": "One more slot for the rest of this period, before VAT."
+        },
+        "vatMinor": {
+          "type": "integer",
+          "description": "The VAT on it (7.5%)."
+        },
+        "totalMinor": {
+          "type": "integer",
+          "description": "What the checkout charges: net plus VAT."
+        },
+        "renewalMinor": {
+          "type": "integer",
+          "description": "What one slot adds to each renewal, before VAT."
+        },
+        "currency": {
+          "type": "string",
+          "example": "NGN"
+        },
+        "periodEnd": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The end of the current period."
+        }
+      },
+      "required": [
+        "percentBp",
+        "slots",
+        "releasing",
+        "netMinor",
+        "vatMinor",
+        "totalMinor",
+        "renewalMinor",
+        "currency",
+        "periodEnd"
       ]
     },
     "billing.SubscriptionDto": {
@@ -11289,6 +15325,32 @@
           "type": "boolean",
           "nullable": true,
           "description": "Whether that profile’s business name is the organisation’s verified legal name (case, spacing, punctuation and `LTD`/`LIMITED` ignored); null when either is unknown."
+        },
+        "einvoicingIdentifier": {
+          "type": "string",
+          "nullable": true,
+          "example": "2522523318294",
+          "description": "R151: the number the tax authority holds for the organisation on Yona’s access point — the live connection’s, else the first of the organisation’s numbers (its recorded TIN, then its verified tax id) the authority’s participant lookup finds. Null while the identifier switch is off, without a verified tax id, or when none resolved (`identifierNextAction` says why)."
+        },
+        "identifierSource": {
+          "type": "string",
+          "enum": [
+            "tin",
+            "tax_id"
+          ],
+          "nullable": true,
+          "description": "R151: where `einvoicingIdentifier` came from — `tin` (the e-invoicing TIN recorded beside the tax id) or `tax_id` (the verified tax id); null with no identifier."
+        },
+        "identifierNextAction": {
+          "type": "string",
+          "enum": [
+            "add_tin",
+            "enable_on_nrs",
+            "choose_elyonar",
+            "retry"
+          ],
+          "nullable": true,
+          "description": "R151: why no number resolved — `add_tin` (no TIN recorded and the authority does not know the tax id), `enable_on_nrs` (the authority knows neither number), `choose_elyonar` (the authority lists the business with another access point provider), `retry` (the authority could not be asked). With no live connection it is also `nextAction.code`. Null when resolved, connected, or not computed; `?fresh=true` asks again."
         }
       },
       "required": [
@@ -11315,7 +15377,10 @@
         "history",
         "sharedWith",
         "businessProfile",
-        "legalNameMatches"
+        "legalNameMatches",
+        "einvoicingIdentifier",
+        "identifierSource",
+        "identifierNextAction"
       ]
     },
     "invoice.CountryOptionDto": {
@@ -14549,6 +18614,12 @@
             }
           ]
         },
+        "createdViaClientId": {
+          "type": "string",
+          "nullable": true,
+          "maxLength": 40,
+          "description": "The client the creating session belonged to (`yona-dashboard`, `yona-mobile`). Null when an API key created the document, and on documents created before the client was recorded. Read-only."
+        },
         "submittedBy": {
           "nullable": true,
           "description": "Who submitted it to the tax authority; null while never submitted.",
@@ -14627,6 +18698,7 @@
         "submissionDueAt",
         "cancelledAt",
         "createdBy",
+        "createdViaClientId",
         "submittedBy",
         "createdAt",
         "updatedAt",
@@ -17504,6 +21576,640 @@
         "deliveryId",
         "eventId",
         "type"
+      ]
+    },
+    "payments.ApiPaginationMetaDto": {
+      "type": "object",
+      "properties": {
+        "total": {
+          "type": "number",
+          "example": 137,
+          "minimum": 0
+        },
+        "page": {
+          "type": "number",
+          "example": 1,
+          "minimum": 1,
+          "description": "1-based page number."
+        },
+        "pageSize": {
+          "type": "number",
+          "example": 20,
+          "description": "Items per page (the `limit` query parameter)."
+        },
+        "totalPages": {
+          "type": "number",
+          "example": 7,
+          "minimum": 0,
+          "description": "`ceil(total / pageSize)`; an empty set is 0 pages."
+        },
+        "hasNext": {
+          "type": "boolean",
+          "example": true
+        },
+        "hasPrevious": {
+          "type": "boolean",
+          "example": false
+        },
+        "nextPage": {
+          "type": "string"
+        },
+        "previousPage": {
+          "type": "string"
+        },
+        "currentPage": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "total",
+        "page",
+        "pageSize",
+        "totalPages",
+        "hasNext",
+        "hasPrevious"
+      ]
+    },
+    "payments.ApiSuccessMetaDto": {
+      "type": "object",
+      "properties": {
+        "statusCode": {
+          "type": "number",
+          "example": 200
+        },
+        "success": {
+          "type": "boolean",
+          "enum": [
+            true
+          ],
+          "example": true
+        },
+        "message": {
+          "type": "string",
+          "example": "Success",
+          "description": "Copy for humans. Never branch on it."
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "maxItems": 0,
+          "example": []
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "example": "2026-09-29T10:00:00.000Z"
+        },
+        "requestId": {
+          "type": "string",
+          "description": "This service’s request id (also the `x-request-id` header) — quote it in a bug report."
+        },
+        "pagination": {
+          "description": "Present on list responses.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/payments.ApiPaginationMetaDto"
+            }
+          ]
+        }
+      },
+      "required": [
+        "statusCode",
+        "success",
+        "message",
+        "errors",
+        "timestamp",
+        "requestId"
+      ]
+    },
+    "payments.BankAccountBalanceDto": {
+      "type": "object",
+      "properties": {
+        "availableMinor": {
+          "type": "number",
+          "description": "Kobo the account may spend now."
+        },
+        "ledgerMinor": {
+          "type": "number",
+          "description": "Kobo on the ledger (available plus holds and pending)."
+        },
+        "holdMinor": {
+          "type": "number"
+        },
+        "pendingMinor": {
+          "type": "number"
+        },
+        "asOf": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the bank answered these figures."
+        },
+        "stale": {
+          "type": "boolean",
+          "description": "True when the figures are older than the refresh window and the bank could not be asked (LP36)."
+        }
+      },
+      "required": [
+        "availableMinor",
+        "ledgerMinor",
+        "holdMinor",
+        "pendingMinor",
+        "asOf",
+        "stale"
+      ]
+    },
+    "payments.BankAccountDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "requested",
+            "opening",
+            "open",
+            "frozen",
+            "closed",
+            "opening_failed"
+          ]
+        },
+        "accountNumber": {
+          "type": "string",
+          "nullable": true,
+          "description": "The organisation’s own NUBAN, in full; null until the account is open."
+        },
+        "accountNumberLast4": {
+          "type": "string",
+          "nullable": true,
+          "description": "The last four digits of the NUBAN (what events and notices carry)."
+        },
+        "accountName": {
+          "type": "string",
+          "nullable": true
+        },
+        "bankName": {
+          "type": "string",
+          "nullable": true
+        },
+        "bankNipCode": {
+          "type": "string",
+          "nullable": true,
+          "description": "The bank’s NIP code (what a payer’s bank app needs)."
+        },
+        "bankPaystackCode": {
+          "type": "string",
+          "nullable": true,
+          "description": "The bank’s Paystack code (what billing’s settlement needs)."
+        },
+        "currency": {
+          "type": "string",
+          "example": "NGN"
+        },
+        "balance": {
+          "nullable": true,
+          "description": "The bank’s latest figures; null before the account opened or was ever read.",
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/payments.BankAccountBalanceDto"
+            }
+          ]
+        },
+        "frozenCause": {
+          "type": "string",
+          "nullable": true
+        },
+        "closedCause": {
+          "type": "string",
+          "nullable": true
+        },
+        "failureReason": {
+          "type": "string",
+          "nullable": true,
+          "description": "Why the account cannot open (`opening_failed`)."
+        },
+        "sendBlockedReason": {
+          "type": "string",
+          "nullable": true,
+          "description": "Set when transfers are refused for a reason of ours (`live_revoked`)."
+        },
+        "settlementOptIn": {
+          "$ref": "#/components/schemas/payments.SettlementOptInStatusDto"
+        },
+        "transferLimits": {
+          "description": "The transfer limits in force, and what is left of today’s.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/payments.TransferLimitsDto"
+            }
+          ]
+        },
+        "openedAt": {
+          "type": "string",
+          "nullable": true,
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "accountNumber",
+        "accountNumberLast4",
+        "accountName",
+        "bankName",
+        "bankNipCode",
+        "bankPaystackCode",
+        "currency",
+        "balance",
+        "frozenCause",
+        "closedCause",
+        "failureReason",
+        "sendBlockedReason",
+        "settlementOptIn",
+        "transferLimits",
+        "openedAt",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "payments.SettlementOptInStatusDto": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": [
+            "none",
+            "pending",
+            "active",
+            "failed",
+            "stale"
+          ]
+        },
+        "settlementAccountId": {
+          "type": "string",
+          "nullable": true,
+          "format": "uuid",
+          "description": "Billing’s settlement account row, once opted in."
+        }
+      },
+      "required": [
+        "status",
+        "settlementAccountId"
+      ]
+    },
+    "payments.TransactionCounterpartyDto": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "nullable": true
+        },
+        "bankName": {
+          "type": "string",
+          "nullable": true
+        },
+        "accountNumberLast4": {
+          "type": "string",
+          "nullable": true,
+          "description": "The other side’s account number, last four digits only."
+        },
+        "nickname": {
+          "type": "string",
+          "nullable": true,
+          "description": "The saved counterparty’s nickname, for an outbound transfer to one; null otherwise."
+        }
+      },
+      "required": [
+        "name",
+        "bankName",
+        "accountNumberLast4",
+        "nickname"
+      ]
+    },
+    "payments.TransactionDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "inbound_credit",
+            "inbound_reversal",
+            "outbound_transfer",
+            "outbound_reversal",
+            "fee"
+          ]
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "credit",
+            "debit"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "completed",
+            "reversed",
+            "failed"
+          ]
+        },
+        "amountMinor": {
+          "type": "number",
+          "description": "Kobo."
+        },
+        "feeMinor": {
+          "type": "number",
+          "description": "Kobo: the bank’s own naira fee on this movement (0 for an outbound transfer; its fee is in credits, `creditsCharged`)."
+        },
+        "creditsCharged": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 0,
+          "description": "For an outbound transfer: the credits billing took when the transfer completed (the transfer’s fee). Null until then, when no fee was taken, and on every other kind of row."
+        },
+        "currency": {
+          "type": "string",
+          "example": "NGN"
+        },
+        "narration": {
+          "type": "string",
+          "nullable": true
+        },
+        "counterparty": {
+          "nullable": true,
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/payments.TransactionCounterpartyDto"
+            }
+          ]
+        },
+        "sessionId": {
+          "type": "string",
+          "nullable": true,
+          "description": "The NIP session id, when the bank gave one."
+        },
+        "bankReference": {
+          "type": "string",
+          "nullable": true,
+          "description": "The banking partner’s own id for this movement (its statement row), the reference to quote to the bank; null until the partner’s read names it."
+        },
+        "transferId": {
+          "type": "string",
+          "nullable": true,
+          "format": "uuid"
+        },
+        "relatedTransactionId": {
+          "type": "string",
+          "nullable": true,
+          "format": "uuid",
+          "description": "For a reversal: the row it reverses."
+        },
+        "confirmation": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "confirmed"
+          ],
+          "description": "`confirmed` once the bank’s own read agreed with the callback."
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "webhook",
+            "reconcile",
+            "transfer"
+          ],
+          "description": "What first recorded the row."
+        },
+        "occurredAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "direction",
+        "status",
+        "amountMinor",
+        "feeMinor",
+        "creditsCharged",
+        "currency",
+        "narration",
+        "counterparty",
+        "sessionId",
+        "bankReference",
+        "transferId",
+        "relatedTransactionId",
+        "confirmation",
+        "source",
+        "occurredAt",
+        "createdAt"
+      ]
+    },
+    "payments.TransferCounterpartyDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "accountName": {
+          "type": "string",
+          "description": "The bank’s name for the account."
+        },
+        "bankName": {
+          "type": "string"
+        },
+        "accountNumberLast4": {
+          "type": "string",
+          "description": "Last four digits only."
+        },
+        "nickname": {
+          "type": "string",
+          "nullable": true,
+          "description": "The saved counterparty’s nickname (the portal’s label), when the member gave one."
+        }
+      },
+      "required": [
+        "id",
+        "accountName",
+        "bankName",
+        "accountNumberLast4",
+        "nickname"
+      ]
+    },
+    "payments.TransferCreatedByDto": {
+      "type": "object",
+      "properties": {
+        "principalType": {
+          "type": "string",
+          "enum": [
+            "user",
+            "service",
+            "system"
+          ]
+        },
+        "principalId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "principalType",
+        "principalId"
+      ]
+    },
+    "payments.TransferDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "authorised",
+            "submitted",
+            "completed",
+            "failed",
+            "reversed",
+            "abandoned"
+          ]
+        },
+        "amountMinor": {
+          "type": "number",
+          "description": "Kobo."
+        },
+        "currency": {
+          "type": "string",
+          "example": "NGN"
+        },
+        "reason": {
+          "type": "string",
+          "description": "The narration, as sanitised."
+        },
+        "reference": {
+          "type": "string",
+          "description": "The partner reference (`yt` + 32 hex), derived from the id."
+        },
+        "counterparty": {
+          "$ref": "#/components/schemas/payments.TransferCounterpartyDto"
+        },
+        "creditsState": {
+          "type": "string",
+          "enum": [
+            "none",
+            "held",
+            "captured",
+            "released",
+            "refunded",
+            "capture_lost"
+          ],
+          "description": "The credits side: held at authorisation, captured when completed, released when failed, refunded when reversed after completion."
+        },
+        "creditsCharged": {
+          "type": "integer",
+          "nullable": true,
+          "minimum": 0,
+          "description": "The transfer fee: the credits billing took when the transfer completed. Null until then, and for a transfer whose fee was never taken (failed, abandoned, or the hold had lapsed)."
+        },
+        "failureReason": {
+          "type": "string",
+          "nullable": true,
+          "description": "A closed code for a failed, abandoned or reversed transfer."
+        },
+        "authorisedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "submittedAt": {
+          "type": "string",
+          "nullable": true,
+          "format": "date-time"
+        },
+        "settledAt": {
+          "type": "string",
+          "nullable": true,
+          "format": "date-time"
+        },
+        "createdBy": {
+          "$ref": "#/components/schemas/payments.TransferCreatedByDto"
+        },
+        "replayed": {
+          "type": "boolean",
+          "description": "True when this answer replays an earlier request under the same Idempotency-Key."
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "amountMinor",
+        "currency",
+        "reason",
+        "reference",
+        "counterparty",
+        "creditsState",
+        "creditsCharged",
+        "failureReason",
+        "authorisedAt",
+        "submittedAt",
+        "settledAt",
+        "createdBy"
+      ]
+    },
+    "payments.TransferLimitsDto": {
+      "type": "object",
+      "properties": {
+        "minMinor": {
+          "type": "number",
+          "description": "The smallest transfer, kobo (`PAYMENTS_TRANSFER_MIN_MINOR`)."
+        },
+        "maxMinor": {
+          "type": "number",
+          "description": "The largest single transfer, kobo (`PAYMENTS_TRANSFER_MAX_MINOR`)."
+        },
+        "dailyMaxMinor": {
+          "type": "number",
+          "description": "The most sent in one UTC day, kobo (`PAYMENTS_DAILY_OUT_MAX_MINOR`)."
+        },
+        "dailyRemainingMinor": {
+          "type": "number",
+          "description": "What is left of today’s limit, kobo (never below 0)."
+        }
+      },
+      "required": [
+        "minMinor",
+        "maxMinor",
+        "dailyMaxMinor",
+        "dailyRemainingMinor"
       ]
     }
   }

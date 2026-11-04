@@ -39,8 +39,11 @@ type Client struct {
 	TaxConnection *TaxConnectionService
 	// Organization: the key's organisation (read-only).
 	Organization *OrganizationService
-	// Billing reads: account, ledger, statements, subscriptions, payments, sandbox allowance.
+	// Billing reads: account, ledger, statements, subscriptions, payments, sandbox allowance, invoice
+	// usage, plans, partner.
 	Billing *BillingService
+	// Collections: accounts that collect invoice payments, the payments, buyer credit, exceptions, settlement.
+	Collections *CollectionsService
 	// Webhooks: endpoints (read, test), deliveries, events and the event catalogue.
 	Webhooks *WebhooksService
 	// HTTP is the transport, for advanced use.
@@ -71,6 +74,7 @@ func New(apiKey string, opts ...Option) (*Client, error) {
 		TaxConnection:   &TaxConnectionService{base},
 		Organization:    &OrganizationService{base},
 		Billing:         newBillingService(base),
+		Collections:     &CollectionsService{base},
 		Webhooks:        newWebhooksService(base),
 		HTTP:            http,
 	}, nil
