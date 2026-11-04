@@ -1,8 +1,8 @@
 {
   "language": "go",
   "package": "github.com/elyonar/einvoice-go",
-  "sdkVersion": "0.1.1",
-  "generatedFrom": "398a656",
+  "sdkVersion": "0.2.0",
+  "generatedFrom": "5244b25",
   "setup": "import (\n\t\"context\"\n\t\"encoding/json\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nctx := context.Background()\nyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\nif err != nil {\n\tlog.Fatal(err)\n}",
   "literal": {
     "string": "go",
