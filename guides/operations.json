@@ -2,7 +2,7 @@
   "language": "go",
   "package": "github.com/elyonar/einvoice-go",
   "sdkVersion": "0.2.0",
-  "generatedFrom": "5244b25",
+  "generatedFrom": "8040132",
   "setup": "import (\n\t\"context\"\n\t\"encoding/json\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nctx := context.Background()\nyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\nif err != nil {\n\tlog.Fatal(err)\n}",
   "literal": {
     "string": "go",
@@ -73,6 +73,11 @@
       "module": "Items",
       "method": "Create",
       "template": "var params einvoice.CreateItemBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Items.Create(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "createOrganization": {
+      "module": "Organization",
+      "method": "CreateSubOrganization",
+      "template": "var params einvoice.CreateSubOrganizationBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Organization.CreateSubOrganization(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "deactivateCollectionAccount": {
       "module": "Collections",
@@ -251,8 +256,8 @@
     },
     "getPartner": {
       "module": "Billing.Partner",
-      "method": "Get",
-      "template": "result, err := yona.Billing.Partner.Get(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+      "method": "GetWithQuery",
+      "template": "var query einvoice.GetPartnerQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Partner.GetWithQuery(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "getPartnerBasketQuote": {
       "module": "Billing.Partner",
@@ -358,6 +363,21 @@
       "module": "Buyers",
       "method": "List",
       "template": "var query einvoice.ListBuyersQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.List(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listChildOrganizations": {
+      "module": "Organization",
+      "method": "ListSubOrganizations",
+      "template": "var query einvoice.ListSubOrganizationsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Organization.ListSubOrganizations(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listChildOrganizationsReadiness": {
+      "module": "Organization",
+      "method": "ListSubOrganizationsReadiness",
+      "template": "var query einvoice.ListSubOrganizationsReadinessQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Organization.ListSubOrganizationsReadiness(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "listChildTaxConnections": {
+      "module": "TaxConnection",
+      "method": "ListForSubOrganizations",
+      "template": "var query einvoice.SubOrganizationTaxConnectionsQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.TaxConnection.ListForSubOrganizations(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "listCollectionAccounts": {
       "module": "Collections",

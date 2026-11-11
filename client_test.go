@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -250,6 +251,211 @@ func TestClientTaxConnectionGetKeepsTheOptionsOnlyCallOf08AndGetWithQueryTakesTh
 	}
 	if f.requests[0].Header.Get("X-Trace") != "t1" || f.requests[1].Header.Get("X-Trace") != "t2" {
 		t.Fatal("options lost")
+	}
+}
+
+func TestClientListsSubOrganisationsAndTheirReadinessAsPagesJoiningAListOfIDs(t *testing.T) {
+	pagination := map[string]any{"total": 2, "page": 1, "pageSize": 100, "totalPages": 1, "hasNext": false, "hasPrevious": false}
+	f := newFake(okAnswer([]map[string]any{{"id": "c1"}, {"id": "c2"}}, map[string]any{"pagination": pagination}))
+	c := newClient(t, f)
+	ctx := context.Background()
+	pg, err := c.Organization.ListSubOrganizations(ctx, &ListSubOrganizationsQuery{Search: Ptr("acme"), Limit: Ptr(50.0)})
+	if err != nil || len(pg.Data) != 2 || pg.Data[1].ID != "c2" || pg.Pagination.Total != 2 || pg.Pagination.PageSize != 100 || pg.RequestID != "req-ok" {
+		t.Fatalf("%+v %v", pg, err)
+	}
+	if _, err := c.Organization.ListSubOrganizations(ctx, &ListSubOrganizationsQuery{IDs: []string{"c1", "c2"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Organization.ListSubOrganizations(ctx, &ListSubOrganizationsQuery{IDs: IDs{"c1,c2"}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Organization.ListSubOrganizations(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	rd, err := c.Organization.ListSubOrganizationsReadiness(ctx, &ListSubOrganizationsReadinessQuery{IDs: IDs{"c1"}, Page: Ptr(2.0)})
+	if err != nil || len(rd.Data) != 2 || rd.Data[0].ID != "c1" {
+		t.Fatalf("%+v %v", rd, err)
+	}
+	want := []string{
+		"GET /a/v1/organizations/me/children?limit=50&search=acme",
+		"GET /a/v1/organizations/me/children?ids=c1%2Cc2",
+		"GET /a/v1/organizations/me/children?ids=c1%2Cc2",
+		"GET /a/v1/organizations/me/children",
+		"GET /a/v1/organizations/me/children/readiness?page=2&ids=c1",
+	}
+	for i, w := range want {
+		got := f.requests[i].Method + " " + f.requests[i].URL.Path
+		if q := f.requests[i].URL.RawQuery; q != "" {
+			got += "?" + q
+		}
+		if got != w {
+			t.Fatalf("call %d: %s, want %s", i, got, w)
+		}
+	}
+}
+
+func TestClientAListOfIDsReachesTheAPIAsOneCommaSeparatedValueNotARepeatedKey(t *testing.T) {
+	f := newFake(okAnswer([]map[string]any{{"organizationId": "a", "state": "connected", "submissionsAllowed": true}}))
+	list, err := newClient(t, f).TaxConnection.ListForSubOrganizations(context.Background(), &SubOrganizationTaxConnectionsQuery{IDs: []string{"a", "b"}})
+	if err != nil || len(list) != 1 || list[0].OrganizationID != "a" || !list[0].SubmissionsAllowed {
+		t.Fatalf("%+v %v", list, err)
+	}
+	u := f.requests[0].URL
+	if ids := u.Query()["ids"]; u.Path != "/i/v1/tax-connection/children" || len(ids) != 1 || ids[0] != "a,b" {
+		t.Fatal(u.String())
+	}
+
+	// In a map query too, and an empty list sends nothing.
+	if qs, err := encodeQuery(map[string]any{"ids": IDs{"a", "b"}, "tag": []string{"x", "y"}}); err != nil || qs != "ids=a%2Cb&tag=x&tag=y" {
+		t.Fatal(qs, err)
+	}
+	if qs, err := encodeQuery(&ListSubOrganizationsQuery{IDs: IDs{}}); err != nil || qs != "" {
+		t.Fatal(qs, err)
+	}
+
+	// The portal's playground hands a query over as JSON, where ids is the API's string.
+	var q SubOrganizationTaxConnectionsQuery
+	if err := json.Unmarshal([]byte(`{"ids":"a,b"}`), &q); err != nil || len(q.IDs) != 2 || q.IDs.String() != "a,b" {
+		t.Fatal(q, err)
+	}
+	if err := json.Unmarshal([]byte(`{"ids":["c"]}`), &q); err != nil || len(q.IDs) != 1 || q.IDs[0] != "c" {
+		t.Fatal(q, err)
+	}
+	if err := json.Unmarshal([]byte(`{"ids":""}`), &q); err != nil || len(q.IDs) != 0 {
+		t.Fatal(q, err)
+	}
+	if err := json.Unmarshal([]byte(`{"ids":7}`), &q); err == nil {
+		t.Fatal("a number is not a list of ids")
+	}
+	if raw, err := json.Marshal(SubOrganizationTaxConnectionsQuery{IDs: IDs{"a", "b"}}); err != nil || string(raw) != `{"ids":"a,b"}` {
+		t.Fatal(string(raw), err)
+	}
+}
+
+// The hand-written sub-organisation queries and body are the generated ones with `ids` as a list
+// and without `country`: a parameter the API adds must be added to them too.
+func TestClientTheSubOrganisationParamsCarryTheOperationsOwnFields(t *testing.T) {
+	names := func(v any, without string) string {
+		var out []string
+		rt := reflect.TypeOf(v)
+		for i := 0; i < rt.NumField(); i++ {
+			if name := strings.Split(rt.Field(i).Tag.Get("json"), ",")[0]; name != without {
+				out = append(out, name)
+			}
+		}
+		sort.Strings(out)
+		return strings.Join(out, ",")
+	}
+	pairs := [][2]string{
+		{names(ListSubOrganizationsQuery{}, ""), names(ListChildOrganizationsQuery{}, "")},
+		{names(ListSubOrganizationsReadinessQuery{}, ""), names(ListChildOrganizationsReadinessQuery{}, "")},
+		{names(SubOrganizationTaxConnectionsQuery{}, ""), names(ListChildTaxConnectionsQuery{}, "")},
+		{names(CreateSubOrganizationBody{}, ""), names(CreateOrganizationBody{}, "country")},
+	}
+	for i, p := range pairs {
+		if p[0] != p[1] || p[0] == "" {
+			t.Fatalf("pair %d: %q, the operation has %q", i, p[0], p[1])
+		}
+	}
+}
+
+func TestClientCreateSubOrganizationPostsTheBodyWithNoIdempotencyKeyAndSoNoRetry(t *testing.T) {
+	f := newFake(okAnswer(map[string]any{"id": "c9", "type": "secondary", "status": "pending_verification"}))
+	c, err := New(liveKey, WithTransport(f))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	created, err := c.Organization.CreateSubOrganization(ctx, &CreateSubOrganizationBody{BusinessName: "Acme Retail Ltd", Email: "accounts@acme.example"})
+	if err != nil || created.ID != "c9" || created.Type != "secondary" || created.Status != "pending_verification" {
+		t.Fatalf("%+v %v", created, err)
+	}
+	req := f.requests[0]
+	if req.Method != "POST" || req.URL.Path != "/a/v1/organizations" || req.Header.Get("Idempotency-Key") != "" {
+		t.Fatal(req.Method, req.URL.Path, req.Header.Get("Idempotency-Key"))
+	}
+	if body := f.bodies[0]; body != `{"businessName":"Acme Retail Ltd","email":"accounts@acme.example"}` {
+		t.Fatal(body)
+	}
+
+	f = newFake(refusal(503, "SYS001", nil, nil), refusal(503, "SYS001", nil, nil))
+	_, err = newClient(t, f).Organization.CreateSubOrganization(ctx, &CreateSubOrganizationBody{BusinessName: "Acme Retail Ltd", Email: "accounts@acme.example"})
+	var se *ServerError
+	if !errors.As(err, &se) || f.calls() != 1 {
+		t.Fatal(err, f.calls())
+	}
+}
+
+func TestClientBillingPartnerGetKeepsTheOptionsOnlyCallOf09AndGetWithQueryTakesThePageOfBusinesses(t *testing.T) {
+	f := newFake(okAnswer(map[string]any{"businessesPage": map[string]any{"page": 2, "limit": 50, "total": 120}}))
+	c := newClient(t, f)
+	ctx := context.Background()
+	if _, err := c.Billing.Partner.Get(ctx, WithRequestHeaders(map[string]string{"X-Trace": "t1"})); err != nil {
+		t.Fatal(err)
+	}
+	partner, err := c.Billing.Partner.GetWithQuery(ctx, &GetPartnerQuery{Page: Ptr(int64(2)), Limit: Ptr(int64(50))}, WithRequestHeaders(map[string]string{"X-Trace": "t2"}))
+	if err != nil || partner.BusinessesPage.Page != 2 || partner.BusinessesPage.Limit != 50 || partner.BusinessesPage.Total != 120 {
+		t.Fatalf("%+v %v", partner, err)
+	}
+	if _, err := c.Billing.Partner.Get(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Billing.Partner.GetWithQuery(ctx, nil); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"", "page=2&limit=50", "", ""}
+	for i, q := range want {
+		if got := f.requests[i].URL.RawQuery; got != q || f.requests[i].URL.Path != "/b/v1/partner" {
+			t.Fatalf("call %d: %s?%s", i, f.requests[i].URL.Path, got)
+		}
+	}
+	if f.requests[0].Header.Get("X-Trace") != "t1" || f.requests[1].Header.Get("X-Trace") != "t2" {
+		t.Fatal("options lost")
+	}
+}
+
+func TestClientCodeListItemsTypesTheStatesAndLGALists(t *testing.T) {
+	f := newFake(
+		okAnswer(map[string]any{"type": "lgas", "version": 1, "fetchedAt": "2026-11-10T00:00:00Z", "stale": false, "items": []map[string]any{
+			{"code": "NG-LA-IKE", "name": "Ikeja", "stateCode": "NG-LA"},
+			{"code": "NG-AB-ABN", "name": "Aba North", "stateCode": "NG-AB"},
+		}}),
+		okAnswer(map[string]any{"type": "states", "version": 1, "fetchedAt": "2026-11-10T00:00:00Z", "stale": false, "items": []map[string]any{{"code": "NG-LA", "name": "Lagos"}}}),
+		okAnswer(map[string]any{"type": "countries", "version": 1, "fetchedAt": "2026-11-10T00:00:00Z", "stale": false, "items": []map[string]any{{"code": "NG", "name": "Nigeria"}}}),
+		okAnswer(map[string]any{"type": "currencies", "version": 1, "fetchedAt": "2026-11-10T00:00:00Z", "stale": false, "items": []any{}}),
+	)
+	c := newClient(t, f)
+	ctx := context.Background()
+	list, err := c.Reference.GetResource(ctx, "lgas")
+	if err != nil {
+		t.Fatal(err)
+	}
+	lgas, err := CodeListItems[LGAOption](list)
+	if err != nil || len(lgas) != 2 || lgas[0] != (LGAOption{Code: "NG-LA-IKE", Name: "Ikeja", StateCode: "NG-LA"}) {
+		t.Fatalf("%+v %v", lgas, err)
+	}
+	list, _ = c.Reference.GetResource(ctx, "states")
+	states, err := CodeListItems[StateOption](list)
+	if err != nil || len(states) != 1 || states[0] != (StateOption{Code: "NG-LA", Name: "Lagos"}) {
+		t.Fatalf("%+v %v", states, err)
+	}
+	list, _ = c.Reference.GetResource(ctx, "countries")
+	countries, err := CodeListItems[CountryOption](list)
+	if err != nil || len(countries) != 1 || countries[0].Code != "NG" || countries[0].Name != "Nigeria" {
+		t.Fatalf("%+v %v", countries, err)
+	}
+	list, _ = c.Reference.GetResource(ctx, "currencies")
+	if empty, err := CodeListItems[StateOption](list); err != nil || empty == nil || len(empty) != 0 {
+		t.Fatalf("%+v %v", empty, err)
+	}
+	if none, err := CodeListItems[StateOption](nil); err != nil || none != nil {
+		t.Fatalf("%+v %v", none, err)
+	}
+	if _, err := CodeListItems[int](&GetInvoiceReferenceListData{Items: []map[string]any{{"code": "NG"}}}); err == nil {
+		t.Fatal("an item that is not a T is an error")
+	}
+	if f.requests[0].URL.Path != "/i/v1/invoices/resources/lgas" || f.requests[1].URL.Path != "/i/v1/invoices/resources/states" {
+		t.Fatal(f.requests[0].URL.Path, f.requests[1].URL.Path)
 	}
 }
 

@@ -2,8 +2,61 @@
   "source": "https://g.useyona.com/docs/openapi.json",
   "title": "Yona API",
   "version": "1.0",
-  "count": 134,
+  "count": 138,
   "operations": [
+    {
+      "method": "POST",
+      "path": "/a/v1/organizations",
+      "operationId": "createOrganization",
+      "tags": [
+        "Organizations",
+        "organizations"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "organization.children.create"
+      ],
+      "summary": "Create an organisation — a secondary of the current one, or the caller’s first",
+      "description": "With an organisation in the token: a SECONDARY (child) of it, the caller its OWNER — the token’s organisation must be a primary that has completed onboarding, the caller must hold `organization.children.create` there (re-read from the database, never from the token), and the parent must have fewer than the environment’s limit of children. The child takes the parent’s country. With NO organisation in the token: the caller’s first, PRIMARY organisation — allowed only while the person holds no active membership. An API key can create a secondary too: a LIVE key that was given `organization.children.create` by name (no key preset includes it; an Owner or Admin adds it when creating the key or by replacing its permissions). The new organisation is then recorded under the parent’s longest-standing Owner, who becomes its Owner. A sandbox key is refused: an organisation exists for both modes. There is no idempotency key here: a name is unique under its parent, so a repeated request answers 409 RES002 and the organisation is found with GET /a/v1/organizations/me/children. Neither branch issues a token or switches the session: call POST /a/v1/organizations/switch next. Answers 404 RES001 while secondary organisations are switched off in the environment.",
+      "parameters": [],
+      "requestBody": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/auth.CreateOrganizationDto"
+            }
+          }
+        }
+      },
+      "responses": {
+        "201": {
+          "description": "The new organisation (`Org`): `type` is `secondary` with `parentOrganizationId` for a child, `primary` with `null` for a first organisation; `status` is `pending_verification` until its own onboarding completes.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/auth.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "$ref": "#/components/schemas/auth.HierarchyOrganizationResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     {
       "method": "GET",
       "path": "/a/v1/organizations/{orgId}",
@@ -51,6 +104,216 @@
                   },
                   "data": {
                     "$ref": "#/components/schemas/auth.OrganizationProfileResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/a/v1/organizations/me/children",
+      "operationId": "listChildOrganizations",
+      "tags": [
+        "Organizations",
+        "organizations"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "organization.children.read"
+      ],
+      "summary": "List the secondary organisations of the current organisation",
+      "description": "A page of the token’s organisation’s children, newest first, with the total in `pagination`. `search` keeps the children whose name holds it; `ids` keeps only the children named (at most 100), for a caller that holds their ids and needs their names. Without `limit`, a page holds 100 (the most). Membership of the parent confers nothing in a child: enter one with POST /a/v1/organizations/switch only with an active membership there. Available to users and to API keys, in sandbox and live. A key needs `organization.children.read`, which no key preset includes: a member who holds it adds it by name when creating the key or by replacing its permissions. Answers 404 RES001 while secondary organisations are switched off in the environment.",
+      "parameters": [
+        {
+          "name": "page",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "minimum": 1,
+            "default": 1,
+            "type": "number"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "type": "number"
+          }
+        },
+        {
+          "name": "search",
+          "required": false,
+          "in": "query",
+          "description": "Part of the organisation’s name",
+          "schema": {
+            "minLength": 1,
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        {
+          "name": "ids",
+          "required": false,
+          "in": "query",
+          "description": "Only these sub-organisations: their ids, comma-separated, at most 100. An id that is not one of the organisation’s sub-organisations is left out of the answer.",
+          "schema": {
+            "example": "0192f1a0-0000-7000-8000-00000000000a,0192f1a0-0000-7000-8000-00000000000b",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/auth.ApiSuccessMetaDto"
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "pagination"
+                        ],
+                        "properties": {
+                          "pagination": {
+                            "$ref": "#/components/schemas/auth.ApiPaginationMetaDto"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/auth.HierarchyOrganizationResponseDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/a/v1/organizations/me/children/readiness",
+      "operationId": "listChildOrganizationsReadiness",
+      "tags": [
+        "Organizations",
+        "organizations"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "organization.children.read"
+      ],
+      "summary": "List the sub-organisations with how ready each is to issue live",
+      "description": "The same page as GET /a/v1/organizations/me/children — newest first, the total in `pagination`, `search` and `ids` as there — with each sub-organisation’s onboarding checklist, live status and next step, so a parent sees which of its businesses still have something to do. It carries what the sub-organisation’s own readiness read carries, without the reviewer’s message after a rejection. Whether a sub-organisation is connected to the tax authority is read from GET /i/v1/tax-connection/children with the same ids. Available to users and to API keys holding `organization.children.read`, in sandbox and live. Answers 404 RES001 while secondary organisations are switched off in the environment.",
+      "parameters": [
+        {
+          "name": "page",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "minimum": 1,
+            "default": 1,
+            "type": "number"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "type": "number"
+          }
+        },
+        {
+          "name": "search",
+          "required": false,
+          "in": "query",
+          "description": "Part of the organisation’s name",
+          "schema": {
+            "minLength": 1,
+            "maxLength": 100,
+            "type": "string"
+          }
+        },
+        {
+          "name": "ids",
+          "required": false,
+          "in": "query",
+          "description": "Only these sub-organisations: their ids, comma-separated, at most 100. An id that is not one of the organisation’s sub-organisations is left out of the answer.",
+          "schema": {
+            "example": "0192f1a0-0000-7000-8000-00000000000a,0192f1a0-0000-7000-8000-00000000000b",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/auth.ApiSuccessMetaDto"
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "pagination"
+                        ],
+                        "properties": {
+                          "pagination": {
+                            "$ref": "#/components/schemas/auth.ApiPaginationMetaDto"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/auth.ChildReadinessResponseDto"
+                    }
                   }
                 }
               }
@@ -1404,7 +1667,7 @@
         "billing.subscription.read"
       ],
       "summary": "Get the deal offered to the organisation",
-      "description": "The private plan Yona offered the organisation (an Enterprise agreement): its monthly and yearly price before VAT, the VAT and the total, its invoice caps, included credits, members and what each sub-organisation costs. `data` is null when nothing is offered or the organisation is already on the offered plan. Requires `billing.subscription.read`.",
+      "description": "The private plan Yona offered the organisation (an Enterprise agreement): its monthly and yearly price before VAT, the VAT and the total, its invoice caps, included credits, members and what each sub-organisation costs. `data` is null when nothing is offered, the organisation is already on the offered plan, or it has scheduled the plan for its period end (`PUT /v1/subscriptions/:id/change-plan` with the plan code). Requires `billing.subscription.read`.",
       "parameters": [],
       "requestBody": null,
       "responses": {
@@ -1453,8 +1716,30 @@
         "billing.subscription.read"
       ],
       "summary": "Get the partner account",
-      "description": "For a partner: its tier, access fee and discount, the businesses it pays for (each with its plan, its price at the discount and whether it leaves at the next renewal), its waiting seats (paid for, no business on them yet; they renew with the monthly charge until used or released), how many more businesses it may add, its seat checkout waiting for payment, and what the next renewal charges. Requires `billing.subscription.read`.",
-      "parameters": [],
+      "description": "For a partner: its tier, access fee and discount, the businesses it pays for (each with its plan, its price at the discount and whether it leaves at the next renewal), its waiting seats (paid for, no business on them yet; they renew with the monthly charge until used or released), how many more businesses it may add, its seat checkout waiting for payment, and what the next renewal charges. The businesses are one page, oldest first (`page`, `limit` up to 100, 100 when none is given; `businessesPage.total` counts them all), since a partner may run up to a million. Requires `billing.subscription.read`.",
+      "parameters": [
+        {
+          "name": "page",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "minimum": 1,
+            "default": 1,
+            "type": "integer"
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "in": "query",
+          "schema": {
+            "minimum": 1,
+            "maximum": 100,
+            "default": 100,
+            "type": "integer"
+          }
+        }
+      ],
       "requestBody": null,
       "responses": {
         "200": {
@@ -1828,7 +2113,8 @@
               "sub_org_slot",
               "overage_pack",
               "partner_seat",
-              "partner_plan_change"
+              "partner_plan_change",
+              "service_fee"
             ]
           }
         }
@@ -2387,7 +2673,7 @@
         "billing.subscription.read"
       ],
       "summary": "Preview a plan change",
-      "description": "Requires `billing.subscription.read` (a user or an API key). What changing now and at the period end would cost and when each would take effect, computed as the change itself would be; writes nothing. Advisory: a change now is quoted again when it is requested. Each timing says whether it is available and, if not, why; the numbers of a change now are given either way.",
+      "description": "Requires `billing.subscription.read` (a user or an API key). What changing now and at the period end would cost and when each would take effect, computed as the change itself would be; writes nothing. Advisory: a change now is quoted again when it is requested. Each timing says whether it is available and, if not, why; the numbers of a change now are given either way. `newPlanCode` may be the plan code of the Enterprise deal offered to this organisation, quoted at its private price; another organisation’s deal, or a withdrawn one, is 404 RES001.",
       "parameters": [
         {
           "name": "id",
@@ -7128,7 +7414,7 @@
         "reference.read"
       ],
       "summary": "Get a reference code list",
-      "description": "`reference.read`; free. One code list’s items; a type the jurisdiction does not serve is 404.",
+      "description": "`reference.read`; free. One code list’s items; a type the jurisdiction does not serve is 404. Four lists have a fixed item shape: `countries` `{code, name}` (ISO 3166-1 alpha-2); `services-codes` `{code, description, category}`; `states` `{code, name}` (Nigeria: `NG-LA` Lagos); `lgas` `{code, name, stateCode}` (Nigeria: `NG-LA-IKE` Ikeja, `stateCode` `NG-LA`) — filter `lgas` by `stateCode` for a State → LGA picker. Every other list’s items are the tax authority’s own.",
       "parameters": [
         {
           "name": "type",
@@ -8934,6 +9220,64 @@
     },
     {
       "method": "GET",
+      "path": "/i/v1/tax-connection/children",
+      "operationId": "listChildTaxConnections",
+      "tags": [
+        "Connection",
+        "tax-connection"
+      ],
+      "principals": [
+        "user",
+        "api_key"
+      ],
+      "capabilities": [
+        "tax_connection.read"
+      ],
+      "summary": "List the tax connection state of sub-organisations",
+      "description": "`tax_connection.read`. For a parent organisation: the state of each named sub-organisation’s connection to the tax authority in the token’s mode, and whether a submission would pass. Name up to 100 sub-organisations in `ids` (the ids GET /a/v1/organizations/me/children answers, which needs `organization.children.read`). An id that is not one of the organisation’s sub-organisations is left out of the answer. Only the state is shown: the tax id, the key and the history stay the sub-organisation’s own. Available to users and API keys.",
+      "parameters": [
+        {
+          "name": "ids",
+          "required": true,
+          "in": "query",
+          "description": "The sub-organisations: their ids, comma-separated, at most 100, each once.",
+          "schema": {
+            "example": "0192f1a0-0000-7000-8000-00000000000a,0192f1a0-0000-7000-8000-00000000000b",
+            "type": "string"
+          }
+        }
+      ],
+      "requestBody": null,
+      "responses": {
+        "200": {
+          "description": "One item for each named sub-organisation, in id order.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "meta",
+                  "data"
+                ],
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/invoice.ApiSuccessMetaDto"
+                  },
+                  "data": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/invoice.ChildConnectionViewDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
       "path": "/n/v1/webhook-deliveries",
       "operationId": "listWebhookDeliveries",
       "tags": [
@@ -10040,6 +10384,10 @@
         "state": {
           "type": "string"
         },
+        "lga": {
+          "type": "string",
+          "nullable": true
+        },
         "postalCode": {
           "type": "string",
           "nullable": true
@@ -10165,6 +10513,263 @@
         "requestId"
       ]
     },
+    "auth.ChildReadinessResponseDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "checklist": {
+          "$ref": "#/components/schemas/auth.ReadinessChecklistResponseDto"
+        },
+        "liveStatus": {
+          "type": "string",
+          "enum": [
+            "not_requested",
+            "pending_review",
+            "approved",
+            "rejected",
+            "revoked"
+          ]
+        },
+        "liveEnabled": {
+          "type": "boolean",
+          "description": "True once the sub-organisation is approved for live and live mode is open."
+        },
+        "nextStep": {
+          "type": "string",
+          "enum": [
+            "verify_tin",
+            "contact_info",
+            "verify_phone",
+            "complete",
+            "awaiting_review",
+            "rejected",
+            "revoked",
+            "live",
+            "live_closed"
+          ],
+          "description": "What the sub-organisation has to do next, as its own readiness names it."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "createdAt",
+        "checklist",
+        "liveStatus",
+        "liveEnabled",
+        "nextStep"
+      ]
+    },
+    "auth.CreateOrganizationDto": {
+      "type": "object",
+      "properties": {
+        "businessName": {
+          "type": "string",
+          "description": "The new organisation’s name.",
+          "example": "Acme Retail Ltd",
+          "minLength": 2,
+          "maxLength": 255
+        },
+        "email": {
+          "type": "string",
+          "description": "Becomes the organisation’s contact email (lower-cased).",
+          "format": "email",
+          "maxLength": 254,
+          "example": "ada@example.com"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "maxLength": 16,
+          "example": "+2348012345678",
+          "description": "E.164; spaces, dashes, dots and brackets are removed before validation"
+        },
+        "website": {
+          "type": "string",
+          "example": "https://acme.ng",
+          "format": "uri",
+          "maxLength": 255
+        },
+        "country": {
+          "type": "string",
+          "description": "ISO-3166-1 alpha-2; only for a first organisation (defaults to NG). Refused when the token has an organisation: a child takes its parent’s country.",
+          "minLength": 2,
+          "maxLength": 2,
+          "example": "NG"
+        }
+      },
+      "required": [
+        "businessName",
+        "email"
+      ]
+    },
+    "auth.HierarchyOrganizationResponseDto": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "legalName": {
+          "type": "string",
+          "nullable": true
+        },
+        "businessName": {
+          "type": "string",
+          "description": "The same value as `name` (v1’s field name, kept for the portal)."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending_verification",
+            "active"
+          ],
+          "description": "`active` once onboarding is completed, else `pending_verification` (derived)."
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "primary",
+            "secondary"
+          ],
+          "description": "Derived from the parent; never stored."
+        },
+        "parentOrganizationId": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true
+        },
+        "country": {
+          "type": "string",
+          "example": "NG"
+        },
+        "tinStatus": {
+          "type": "string",
+          "enum": [
+            "unverified",
+            "pending",
+            "verified",
+            "failed",
+            "unavailable"
+          ]
+        },
+        "liveStatus": {
+          "type": "string",
+          "enum": [
+            "not_requested",
+            "pending_review",
+            "approved",
+            "rejected",
+            "revoked"
+          ]
+        },
+        "logoUrl": {
+          "type": "string",
+          "nullable": true,
+          "description": "Public URL of the confirmed logo."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "legalName",
+        "businessName",
+        "status",
+        "type",
+        "parentOrganizationId",
+        "country",
+        "tinStatus",
+        "liveStatus",
+        "logoUrl",
+        "createdAt"
+      ]
+    },
+    "auth.OrganizationOnboardingProfileResponseDto": {
+      "type": "object",
+      "properties": {
+        "acquisitionSource": {
+          "type": "string",
+          "enum": [
+            "search",
+            "ai_assistant",
+            "social",
+            "friend",
+            "accountant",
+            "partner",
+            "nrs",
+            "event",
+            "other"
+          ],
+          "nullable": true
+        },
+        "acquisitionSourceOther": {
+          "type": "string",
+          "nullable": true,
+          "description": "The free text behind `other`."
+        },
+        "intendedUse": {
+          "type": "string",
+          "enum": [
+            "send_invoices",
+            "api",
+            "buyer_check",
+            "received_invoices",
+            "not_sure"
+          ],
+          "nullable": true
+        },
+        "invoiceVolumeBand": {
+          "type": "string",
+          "enum": [
+            "up_to_20",
+            "21_100",
+            "101_500",
+            "over_500",
+            "not_sure"
+          ],
+          "nullable": true
+        },
+        "invoiceValueBand": {
+          "type": "string",
+          "enum": [
+            "up_to_1m",
+            "1m_5m",
+            "5m_25m",
+            "over_25m"
+          ],
+          "nullable": true
+        },
+        "setupHelpConsentAt": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true
+        }
+      },
+      "required": [
+        "acquisitionSource",
+        "acquisitionSourceOther",
+        "intendedUse",
+        "invoiceVolumeBand",
+        "invoiceValueBand",
+        "setupHelpConsentAt"
+      ]
+    },
     "auth.OrganizationProfileResponseDto": {
       "type": "object",
       "properties": {
@@ -10277,6 +10882,14 @@
           "format": "uuid",
           "nullable": true
         },
+        "onboardingProfile": {
+          "description": "What onboarding asked (how the organisation found Yona, its intended use, its invoice bands, the setup-help consent); every field null until answered.",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/auth.OrganizationOnboardingProfileResponseDto"
+            }
+          ]
+        },
         "sellerCode": {
           "type": "string",
           "example": "EKA",
@@ -10309,6 +10922,7 @@
         "createdAt",
         "type",
         "parentOrganizationId",
+        "onboardingProfile",
         "sellerCode",
         "sellerCodeLocked"
       ]
@@ -10338,6 +10952,36 @@
         "phoneVerified",
         "termsAccepted",
         "onboardingCompleted"
+      ]
+    },
+    "auth.ReadinessLiveRejectionResponseDto": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "nullable": true,
+          "description": "What to change before asking again, as the reviewer wrote it for the business; null when none was written."
+        },
+        "decidedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "message",
+        "decidedAt"
+      ]
+    },
+    "auth.ReadinessProfileResponseDto": {
+      "type": "object",
+      "properties": {
+        "completed": {
+          "type": "boolean",
+          "description": "True once the intended use and the invoice volume band are set."
+        }
+      },
+      "required": [
+        "completed"
       ]
     },
     "auth.ReadinessResponseDto": {
@@ -10375,6 +11019,19 @@
             "live",
             "live_closed"
           ]
+        },
+        "profile": {
+          "$ref": "#/components/schemas/auth.ReadinessProfileResponseDto"
+        },
+        "liveRejection": {
+          "nullable": true,
+          "description": "The last rejection while live access is rejected; null in any other state.",
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/auth.ReadinessLiveRejectionResponseDto"
+            }
+          ]
         }
       },
       "required": [
@@ -10382,7 +11039,9 @@
         "liveStatus",
         "productionModeEnabled",
         "liveEnabled",
-        "nextStep"
+        "nextStep",
+        "profile",
+        "liveRejection"
       ]
     },
     "auth.ReadinessTermsResponseDto": {
@@ -10459,6 +11118,12 @@
           "format": "uuid",
           "nullable": true,
           "description": "The partner organisation that pays for this business’s plan; null when the organisation pays for itself or has no plan."
+        },
+        "coveredBy": {
+          "type": "string",
+          "format": "uuid",
+          "nullable": true,
+          "description": "The parent organisation whose plan this sub-organisation carries, having none of its own; null when the organisation has its own plan, is a primary, or is a partner’s business."
         }
       },
       "required": [
@@ -10466,7 +11131,8 @@
         "pricingModel",
         "planCode",
         "entitlements",
-        "paidBy"
+        "paidBy",
+        "coveredBy"
       ]
     },
     "billing.AccountStatsDto": {
@@ -12295,6 +12961,30 @@
         "planChange"
       ]
     },
+    "billing.PartnerBusinessesPageDto": {
+      "type": "object",
+      "properties": {
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many businesses the partner pays for."
+        }
+      },
+      "required": [
+        "page",
+        "limit",
+        "total"
+      ]
+    },
     "billing.PartnerCapacityDto": {
       "type": "object",
       "properties": {
@@ -12773,10 +13463,14 @@
           "format": "date-time"
         },
         "businesses": {
+          "description": "One page of the businesses the partner pays for, oldest first (`businessesPage` says which; a partner may run up to a million).",
           "type": "array",
           "items": {
             "$ref": "#/components/schemas/billing.PartnerBusinessDto"
           }
+        },
+        "businessesPage": {
+          "$ref": "#/components/schemas/billing.PartnerBusinessesPageDto"
         },
         "unassignedSeats": {
           "description": "Waiting seats: paid for, no business on them yet. Oldest first.",
@@ -12809,6 +13503,7 @@
         "discountBp",
         "periodEnd",
         "businesses",
+        "businessesPage",
         "unassignedSeats",
         "capacity",
         "openCheckout",
@@ -12831,7 +13526,8 @@
             "sub_org_slot",
             "overage_pack",
             "partner_seat",
-            "partner_plan_change"
+            "partner_plan_change",
+            "service_fee"
           ]
         },
         "status": {
@@ -12867,7 +13563,17 @@
         },
         "amountMinor": {
           "type": "integer",
-          "description": "Integer minor units."
+          "description": "Integer minor units — what the checkout charged, VAT included."
+        },
+        "netMinor": {
+          "type": "integer",
+          "nullable": true,
+          "description": "The ex-VAT price when the payment records its VAT split; null on older payments."
+        },
+        "vatMinor": {
+          "type": "integer",
+          "nullable": true,
+          "description": "The VAT charged when the payment records its VAT split; null on older payments."
         },
         "currency": {
           "type": "string",
@@ -12880,6 +13586,16 @@
           "type": "integer",
           "nullable": true,
           "description": "Credits a credit purchase grants; null otherwise."
+        },
+        "serviceFeeItem": {
+          "type": "string",
+          "enum": [
+            "ng_bn_sole_registration",
+            "ng_bn_partnership_registration",
+            "ng_llc_registration"
+          ],
+          "nullable": true,
+          "description": "A service fee’s item code (the registry’s registration fees); null for every other kind."
         },
         "refundedMinor": {
           "type": "integer",
@@ -12912,8 +13628,11 @@
         "provider",
         "providerReference",
         "amountMinor",
+        "netMinor",
+        "vatMinor",
         "currency",
         "credits",
+        "serviceFeeItem",
         "refundedMinor",
         "subscriptionId",
         "createdAt",
@@ -12936,7 +13655,8 @@
             "sub_org_slot",
             "overage_pack",
             "partner_seat",
-            "partner_plan_change"
+            "partner_plan_change",
+            "service_fee"
           ]
         },
         "status": {
@@ -12972,7 +13692,17 @@
         },
         "amountMinor": {
           "type": "integer",
-          "description": "Integer minor units."
+          "description": "Integer minor units — what the checkout charged, VAT included."
+        },
+        "netMinor": {
+          "type": "integer",
+          "nullable": true,
+          "description": "The ex-VAT price when the payment records its VAT split; null on older payments."
+        },
+        "vatMinor": {
+          "type": "integer",
+          "nullable": true,
+          "description": "The VAT charged when the payment records its VAT split; null on older payments."
         },
         "currency": {
           "type": "string",
@@ -12985,6 +13715,16 @@
           "type": "integer",
           "nullable": true,
           "description": "Credits a credit purchase grants; null otherwise."
+        },
+        "serviceFeeItem": {
+          "type": "string",
+          "enum": [
+            "ng_bn_sole_registration",
+            "ng_bn_partnership_registration",
+            "ng_llc_registration"
+          ],
+          "nullable": true,
+          "description": "A service fee’s item code (the registry’s registration fees); null for every other kind."
         },
         "refundedMinor": {
           "type": "integer",
@@ -13013,8 +13753,11 @@
         "provider",
         "providerReference",
         "amountMinor",
+        "netMinor",
+        "vatMinor",
         "currency",
         "credits",
+        "serviceFeeItem",
         "refundedMinor",
         "subscriptionId",
         "createdAt",
@@ -13223,7 +13966,8 @@
             "cancel_scheduled",
             "checkout_in_progress",
             "paid_by_partner",
-            "partner_plan"
+            "partner_plan",
+            "renewal_in_progress"
           ],
           "nullable": true,
           "description": "Why a change now is not available; null when it is."
@@ -13283,7 +14027,8 @@
             "cancel_scheduled",
             "checkout_in_progress",
             "paid_by_partner",
-            "partner_plan"
+            "partner_plan",
+            "renewal_in_progress"
           ],
           "nullable": true,
           "description": "Why a change at period end is not available; null when it is."
@@ -13791,7 +14536,8 @@
             "sub_org_slot",
             "overage_pack",
             "partner_seat",
-            "partner_plan_change"
+            "partner_plan_change",
+            "service_fee"
           ]
         },
         "amountMinor": {
@@ -14529,12 +15275,15 @@
         },
         "state": {
           "type": "string",
-          "maxLength": 100
+          "maxLength": 100,
+          "example": "NG-LA",
+          "description": "For a Nigerian address, a state from `GET /i/v1/invoices/resources/states`: its `code` (`NG-LA`) or its `name` (`Lagos`). Stored and returned as the code. Not on the list → 400 `VAL202`. Free text for other countries."
         },
         "lga": {
           "type": "string",
           "maxLength": 100,
-          "description": "Local government area."
+          "example": "NG-LA-IKE",
+          "description": "Local government area. For a Nigerian address, an LGA from `GET /i/v1/invoices/resources/lgas` whose `stateCode` is the address's `state`: its `code` (`NG-LA-IKE`) or its `name` (`Ikeja`). Stored and returned as the code. Not on the list, or not in that state → 400 `VAL203`. Sent without a state, an unambiguous LGA fills the state in."
         },
         "postalCode": {
           "type": "string",
@@ -14932,6 +15681,38 @@
       },
       "required": [
         "reason"
+      ]
+    },
+    "invoice.ChildConnectionViewDto": {
+      "type": "object",
+      "properties": {
+        "organizationId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "The sub-organisation."
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "not_connected",
+            "pending_taxpayer_enablement",
+            "pending_grant_approval",
+            "pending_key",
+            "connected",
+            "suspended",
+            "revoked"
+          ],
+          "description": "Its connection to the tax authority in the token’s mode; `not_connected` when it has none."
+        },
+        "submissionsAllowed": {
+          "type": "boolean",
+          "description": "True only while the connection is `connected`."
+        }
+      },
+      "required": [
+        "organizationId",
+        "state",
+        "submissionsAllowed"
       ]
     },
     "invoice.ClaimedIdentifiersViewDto": {

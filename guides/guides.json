@@ -1,6 +1,6 @@
 {
   "sdkVersion": "0.2.0",
-  "generatedFrom": "5244b25",
+  "generatedFrom": "8040132",
   "install": "go get github.com/elyonar/einvoice-go",
   "quickStart": "package main\n\nimport (\n\t\"context\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nfunc main() {\n\tctx := context.Background()\n\n\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(yona.Mode()) // \"sandbox\" for sk_test_, \"live\" for sk_live_\n\n\treadiness, err := yona.Organization.GetReadiness(ctx)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tout, _ := json.MarshalIndent(readiness, \"\", \"  \")\n\tfmt.Println(string(out))\n}",
   "recipes": [
@@ -348,6 +348,116 @@
           "sdk": "\tbuyersQuery := &einvoice.ListBuyersQuery{Limit: einvoice.Ptr(100.0)}\n\tbuyers, err := einvoice.Collect(ctx, func(ctx context.Context, page int64) (*einvoice.Page[einvoice.BuyerViewDto], error) {\n\t\tbuyersQuery.Page = einvoice.Ptr(float64(page))\n\t\treturn yona.Buyers.List(ctx, buyersQuery)\n\t})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"buyers\", len(buyers))\n}",
           "curl": "curl \"https://gp.useyona.com/i/v1/buyers\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
           "operationId": "listBuyers"
+        }
+      ]
+    },
+    {
+      "id": "states-and-lgas",
+      "title": "States and LGAs",
+      "summary": "A Nigerian address uses the tax authority's own state and LGA codes. Read both lists, fill an LGA picker from the chosen state, save a buyer with the codes, and handle a value that is not on the lists.",
+      "steps": [
+        {
+          "id": "client",
+          "title": "Create the client",
+          "text": null,
+          "sdk": "package main\n\nimport (\n\t\"context\"\n\t\"errors\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\t\"slices\"\n\t\"time\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nfunc main() {\n\tctx := context.Background()\n\n\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "lists",
+          "title": "Read the states and the LGAs",
+          "text": "Both lists are free to read and change rarely, so read them once and keep them. CodeListItems decodes a list's items: a StateOption is {Code, Name}. An LGAOption is {Code, Name, StateCode}, where StateCode is its state's code.",
+          "sdk": "\tstateList, err := yona.Reference.GetResource(ctx, \"states\")\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tstates, err := einvoice.CodeListItems[einvoice.StateOption](stateList)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tlgaList, err := yona.Reference.GetResource(ctx, \"lgas\")\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tlgas, err := einvoice.CodeListItems[einvoice.LGAOption](lgaList)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(len(states), \"states,\", len(lgas), \"LGAs\")",
+          "curl": "curl \"https://gp.useyona.com/i/v1/invoices/resources/{type}\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "getInvoiceReferenceList"
+        },
+        {
+          "id": "picker",
+          "title": "Fill the LGA picker from the chosen state",
+          "text": "Filter the LGAs by the chosen state's code. Keep the code, never the name alone: a few LGA names exist in two states, and a code cannot be worked out from a name.",
+          "sdk": "\tat := slices.IndexFunc(states, func(state einvoice.StateOption) bool { return state.Name == \"Lagos\" })\n\tif at < 0 {\n\t\tlog.Fatal(\"Lagos is not on the list of states\")\n\t}\n\tlagos := states[at]\n\tvar lgasOfLagos []einvoice.LGAOption\n\tfor _, lga := range lgas {\n\t\tif lga.StateCode == lagos.Code {\n\t\t\tlgasOfLagos = append(lgasOfLagos, lga)\n\t\t}\n\t}\n\tat = slices.IndexFunc(lgasOfLagos, func(lga einvoice.LGAOption) bool { return lga.Name == \"Ikeja\" })\n\tif at < 0 {\n\t\tlog.Fatal(\"Ikeja is not on the list of LGAs for Lagos\")\n\t}\n\tikeja := lgasOfLagos[at]\n\tfmt.Printf(\"%s %s (%d LGAs in Lagos)\\n\", lagos.Code, ikeja.Code, len(lgasOfLagos))",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "buyer",
+          "title": "Save a buyer with the codes",
+          "text": "Send the state and LGA codes in the buyer's address. The exact names are accepted too and are stored as the codes; the answer always carries the codes. Both fields are optional.",
+          "sdk": "\tbuyer, err := yona.Buyers.Create(ctx, &einvoice.CreateBuyerBody{\n\t\tName:      fmt.Sprintf(\"Acme Trading %d\", time.Now().UnixMilli()),\n\t\tPartyType: einvoice.Ptr(einvoice.CreateBuyerDtoPartyTypeIndividual),\n\t\tAddress: &einvoice.BuyerAddressDto{\n\t\t\tLine1: \"12 Allen Avenue\", City: \"Ikeja\", State: einvoice.Ptr(lagos.Code), Lga: einvoice.Ptr(ikeja.Code), Country: \"NG\",\n\t\t},\n\t})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tsaved := buyer.Address\n\tif saved == nil || saved.State == nil || *saved.State != lagos.Code || saved.Lga == nil || *saved.Lga != ikeja.Code {\n\t\tlog.Fatal(\"the buyer did not keep the codes\")\n\t}\n\tfmt.Println(\"buyer\", buyer.ID, *saved.State, *saved.Lga)",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/buyers\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"string\"\n}'",
+          "operationId": "createBuyer"
+        },
+        {
+          "id": "refused",
+          "title": "Handle a value that is not on the lists",
+          "text": "A state that is not on the list is refused with VAL202. An LGA that is not on the list, or that belongs to another state, is refused with VAL203. Nothing is saved, and Errors names the field.",
+          "sdk": "\tat = slices.IndexFunc(lgas, func(lga einvoice.LGAOption) bool { return lga.StateCode != lagos.Code })\n\tif at < 0 {\n\t\tlog.Fatal(\"every LGA is in Lagos\")\n\t}\n\telsewhere := lgas[at]\n\t_, err = yona.Buyers.Update(ctx, buyer.ID, &einvoice.UpdateBuyerBody{\n\t\tAddress: &einvoice.BuyerAddressDto{\n\t\t\tLine1: \"12 Allen Avenue\", City: \"Ikeja\", State: einvoice.Ptr(lagos.Code), Lga: einvoice.Ptr(elsewhere.Code), Country: \"NG\",\n\t\t},\n\t})\n\tvar refused *einvoice.ValidationError\n\tswitch {\n\tcase err == nil:\n\t\tlog.Fatal(\"an LGA of another state was accepted\")\n\tcase !errors.As(err, &refused) || refused.ErrorCode != \"VAL203\":\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"refused:\", refused.ErrorCode, refused.Errors)",
+          "curl": "curl -X PATCH \"https://gp.useyona.com/i/v1/buyers/{id}\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{}'",
+          "operationId": "updateBuyer"
+        },
+        {
+          "id": "tidy",
+          "title": "Remove the example buyer",
+          "text": null,
+          "sdk": "\tif _, err := yona.Buyers.Delete(ctx, buyer.ID); err != nil {\n\t\tlog.Fatal(err)\n\t}\n}",
+          "curl": "curl -X DELETE \"https://gp.useyona.com/i/v1/buyers/{id}\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "deleteBuyer"
+        }
+      ]
+    },
+    {
+      "id": "sub-organisations",
+      "title": "Sub-organisations",
+      "summary": "For an organisation that runs several businesses: list its sub-organisations with an API key, see which are ready for live and connected to the tax authority, and create one with a live key.",
+      "steps": [
+        {
+          "id": "client",
+          "title": "Create the client",
+          "text": "Use a key of the parent organisation. No key preset includes the two sub-organisation permissions: an Owner or Admin ticks them under Sub-organisations when creating the key in the dashboard. Listing works in sandbox and live; creating needs a live key.",
+          "sdk": "package main\n\nimport (\n\t\"context\"\n\t\"errors\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nfunc main() {\n\tctx := context.Background()\n\n\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}",
+          "curl": null,
+          "operationId": null
+        },
+        {
+          "id": "list",
+          "title": "List the sub-organisations",
+          "text": "Newest first, 100 a page at most, with the total in Pagination. Search keeps the ones whose name holds the text. The permission is organization.children.read.",
+          "sdk": "\tfirstPage, err := yona.Organization.ListSubOrganizations(ctx, &einvoice.ListSubOrganizationsQuery{Limit: einvoice.Ptr(100.0)})\n\tif err != nil {\n\t\t// 403 AUTH019: the key does not hold organization.children.read. 404 RES001: sub-organisations are\n\t\t// not switched on here. 409 BIZ014: this organisation is itself a sub-organisation.\n\t\tvar permission *einvoice.PermissionError\n\t\tvar notFound *einvoice.NotFoundError\n\t\tvar conflict *einvoice.ConflictError\n\t\tswitch {\n\t\tcase errors.As(err, &permission) && permission.ErrorCode == \"AUTH019\":\n\t\t\tfmt.Println(\"this key cannot list sub-organisations:\", permission.ErrorCode)\n\t\tcase errors.As(err, &notFound) && notFound.ErrorCode == \"RES001\":\n\t\t\tfmt.Println(\"this key cannot list sub-organisations:\", notFound.ErrorCode)\n\t\tcase errors.As(err, &conflict) && conflict.ErrorCode == \"BIZ014\":\n\t\t\tfmt.Println(\"this key cannot list sub-organisations:\", conflict.ErrorCode)\n\t\tdefault:\n\t\t\tlog.Fatal(err)\n\t\t}\n\t\treturn\n\t}\n\tfmt.Println(firstPage.Pagination.Total, \"sub-organisations\")",
+          "curl": "curl \"https://gp.useyona.com/a/v1/organizations/me/children\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listChildOrganizations"
+        },
+        {
+          "id": "paginate",
+          "title": "Walk every page",
+          "text": "An organisation can hold many sub-organisations. Paginate fetches page after page for you.",
+          "sdk": "\tvar all []einvoice.ListChildOrganizationsItem\n\tenough := errors.New(\"enough\")\n\tquery := &einvoice.ListSubOrganizationsQuery{Limit: einvoice.Ptr(100.0)}\n\terr = einvoice.Paginate(ctx, func(ctx context.Context, page int64) (*einvoice.Page[einvoice.ListChildOrganizationsItem], error) {\n\t\tquery.Page = einvoice.Ptr(float64(page))\n\t\treturn yona.Organization.ListSubOrganizations(ctx, query)\n\t}, func(sub einvoice.ListChildOrganizationsItem) error {\n\t\tall = append(all, sub)\n\t\tif len(all) >= 300 {\n\t\t\treturn enough\n\t\t}\n\t\treturn nil\n\t})\n\tif err != nil && !errors.Is(err, enough) {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"read\", len(all))",
+          "curl": "curl \"https://gp.useyona.com/a/v1/organizations/me/children\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listChildOrganizations"
+        },
+        {
+          "id": "readiness",
+          "title": "See which are ready for live",
+          "text": "The same page, with each sub-organisation's checklist, live status and next step. IDs keeps only the ones you name (100 at most), given as a list.",
+          "sdk": "\tvar ids []string\n\tfor _, sub := range firstPage.Data {\n\t\tids = append(ids, sub.ID)\n\t}\n\treadinessQuery := &einvoice.ListSubOrganizationsReadinessQuery{Limit: einvoice.Ptr(100.0)}\n\tif len(ids) > 0 {\n\t\treadinessQuery = &einvoice.ListSubOrganizationsReadinessQuery{IDs: ids}\n\t}\n\treadiness, err := yona.Organization.ListSubOrganizationsReadiness(ctx, readinessQuery)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfor _, sub := range readiness.Data {\n\t\tfmt.Println(sub.Name, sub.LiveStatus, sub.NextStep)\n\t}",
+          "curl": "curl \"https://gp.useyona.com/a/v1/organizations/me/children/readiness\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listChildOrganizationsReadiness"
+        },
+        {
+          "id": "tax-connection",
+          "title": "Check their tax connections",
+          "text": "One item for each sub-organisation named: the state of its connection to the tax authority in the key's mode, and whether a submission would pass. The permission is tax_connection.read. An id that is not one of your sub-organisations is left out.",
+          "sdk": "\tif len(ids) > 0 {\n\t\tconnections, err := yona.TaxConnection.ListForSubOrganizations(ctx, &einvoice.SubOrganizationTaxConnectionsQuery{IDs: ids})\n\t\tif err != nil {\n\t\t\tlog.Fatal(err)\n\t\t}\n\t\tfor _, c := range connections {\n\t\t\tfmt.Println(c.OrganizationID, c.State, c.SubmissionsAllowed)\n\t\t}\n\t}",
+          "curl": "curl \"https://gp.useyona.com/i/v1/tax-connection/children?ids=0192f1a0-0000-7000-8000-00000000000a%2C0192f1a0-0000-7000-8000-00000000000b\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\"",
+          "operationId": "listChildTaxConnections"
+        },
+        {
+          "id": "create",
+          "title": "Create a sub-organisation",
+          "text": "With a live key that holds organization.children.create, this answers the new organisation; its Status is pending_verification until it completes its own onboarding. A name is unique under its parent, so a repeat answers 409 RES002 and nothing is created twice. A sandbox key is refused, which is what this step shows in sandbox; with a live key it creates nothing here.",
+          "sdk": "\tif yona.Mode() == einvoice.ModeSandbox {\n\t\tcreated, err := yona.Organization.CreateSubOrganization(ctx, &einvoice.CreateSubOrganizationBody{BusinessName: \"Acme Retail Ltd\", Email: \"accounts@acme.example\"})\n\t\tvar refused *einvoice.PermissionError\n\t\tswitch {\n\t\tcase err == nil:\n\t\t\tlog.Fatal(\"a sandbox key created \", created.ID)\n\t\tcase !errors.As(err, &refused):\n\t\t\tlog.Fatal(err)\n\t\t}\n\t\tfmt.Println(\"refused in sandbox:\", refused.ErrorCode)\n\t}\n}",
+          "curl": "curl -X POST \"https://gp.useyona.com/a/v1/organizations\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"businessName\": \"Acme Retail Ltd\",\n  \"email\": \"ada@example.com\"\n}'",
+          "operationId": "createOrganization"
         }
       ]
     }

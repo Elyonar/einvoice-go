@@ -751,9 +751,12 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 
 type queryPair struct{ key, value string }
 
+var idsType = reflect.TypeOf(IDs(nil))
+
 // encodeQuery renders a query in the order its fields are declared: nil pointers and empty strings
-// are skipped, bools are "true"/"false", slices repeat the key. It accepts a `<Op>Query` struct (or
-// a pointer to one), url.Values, map[string]any and map[string]string (maps are sorted by key).
+// are skipped, bools are "true"/"false", slices repeat the key, except an IDs, which is one
+// comma-separated value. It accepts a `<Op>Query` struct (or a pointer to one), url.Values,
+// map[string]any and map[string]string (maps are sorted by key).
 func encodeQuery(query any) (string, error) {
 	if query == nil {
 		return "", nil
@@ -847,6 +850,14 @@ func appendQueryValue(pairs []queryPair, key string, v reflect.Value) []queryPai
 			return pairs
 		}
 		v = v.Elem()
+	}
+	if v.Type() == idsType {
+		// `ids=a,b`: the API refuses a repeated `ids` key
+		ids := make([]string, v.Len())
+		for i := range ids {
+			ids[i] = v.Index(i).String()
+		}
+		return appendScalar(pairs, key, strings.Join(ids, ","))
 	}
 	switch v.Kind() {
 	case reflect.Slice, reflect.Array:

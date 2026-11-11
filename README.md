@@ -167,6 +167,15 @@ case errors.As(err, &apiErr):
 Branch on `ErrorCode`, not on the message. Problems before the API answers are `*TimeoutError`,
 `*ConnectionError` and `*ConfigError`; a cancelled context comes back as `ctx.Err()`.
 
+Some codes to branch on:
+
+| Status | `ErrorCode` | When |
+|---|---|---|
+| 400 | `VAL202`, `VAL203` | a buyer's address: a state that is not on the list (`VAL202`); an LGA that is not on the list, or of another state (`VAL203`) |
+| 402 | `BIZ016` | `Organization.CreateSubOrganization`: the plan allows no more organisations |
+| 403 | `AUTH019` | the key does not hold the capability the route needs |
+| 403 | `BIZ003` | a sandbox key creating a sub-organisation |
+
 ## Retries and idempotency
 
 Reads, and writes that carry an `Idempotency-Key`, are retried automatically on network errors,
@@ -208,15 +217,18 @@ list and test them and inspect deliveries.
 
 ## Guides
 
-[`examples/`](examples/) holds complete, runnable walkthroughs: your first invoice, webhooks, errors
-and retries, sandbox and live, received invoices. Run them against your sandbox key with
-`YONA_API_KEY=sk_test_… make examples`.
+[`examples/`](examples/) holds seven complete, runnable walkthroughs: your first invoice, webhooks,
+errors and retries, sandbox and live, received invoices, states and LGAs (the two lists, an LGA
+picker filtered by state, a buyer saved with the codes, `VAL202` and `VAL203`) and sub-organisations
+(listing them with a key, their readiness for live and their tax connections, creating one with a
+live key). Run them against your sandbox key with `YONA_API_KEY=sk_test_… make examples`.
 
 ## API reference
 
 Every method takes `ctx` first and optional trailing `...RequestOption`. Request and query types are
-named after the operation (`*CreateInvoiceBody`, `*ListInvoicesQuery`); a query may be nil. 123
-methods in 27 modules: einvoice-js's 122, plus `TaxConnection.GetWithQuery` (see below).
+named after the operation (`*CreateInvoiceBody`, `*ListInvoicesQuery`); a query may be nil. 128
+methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
+`Billing.Partner.GetWithQuery` (see below).
 
 | Module | Methods |
 |---|---|
@@ -231,8 +243,8 @@ methods in 27 modules: einvoice-js's 122, plus `TaxConnection.GetWithQuery` (see
 | `client.InboundInvoices` | `List`, `Get`, `GetAnalytics`, `ListHistoryRuns`, `GetHistoryRun` |
 | `client.IssuedHistory` | `List`, `Get`, `DownloadPDF` |
 | `client.InvoiceSettings` | `Get` |
-| `client.TaxConnection` | `Get`, `GetWithQuery` |
-| `client.Organization` | `Get`, `GetReadiness` |
+| `client.TaxConnection` | `Get`, `GetWithQuery`, `ListForSubOrganizations` |
+| `client.Organization` | `Get`, `GetReadiness`, `ListSubOrganizations`, `ListSubOrganizationsReadiness`, `CreateSubOrganization` |
 | `client.Billing.Accounts` | `GetMine`, `GetStats`, `CheckBalance` |
 | `client.Billing.Payments` | `List`, `Get` |
 | `client.Billing.Sandbox` | `ListTransactions`, `GetUsage` |
@@ -241,19 +253,59 @@ methods in 27 modules: einvoice-js's 122, plus `TaxConnection.GetWithQuery` (see
 | `client.Billing.Transactions` | `List`, `Get`, `GetUsageAnalytics`, `GetUsageByCostCode` |
 | `client.Billing.Usage` | `GetInvoices`, `QuoteOverage` |
 | `client.Billing.Plans` | `GetRecommendation` |
-| `client.Billing.Partner` | `Get`, `GetOffer`, `QuoteSeat`, `QuoteBasket`, `QuotePlanChange` |
+| `client.Billing.Partner` | `Get`, `GetWithQuery`, `GetOffer`, `QuoteSeat`, `QuoteBasket`, `QuotePlanChange` |
 | `client.Collections` | `ListAccounts`, `CreateAccount`, `GetAccount`, `GetAccountStatus`, `DeactivateAccount`, `QuoteFee`, `ListPayments`, `ListBuyerCredits`, `ListExceptions`, `ResolveException`, `ListSettlementAccounts`, `GetSettlementAccount`, `ListBanks` |
 | `client.Webhooks.Endpoints` | `List`, `Get`, `Test` |
 | `client.Webhooks.Deliveries` | `List`, `Get`, `Redeliver` |
 | `client.Webhooks.Events` | `List`, `Get`, `Redeliver` |
 | `client.Webhooks.EventTypes` | `List` |
-| package `einvoice` | `VerifyWebhook`, `SignWebhookPayload`, `ComputeWebhookSignature`, `ParseSignatureHeader`, `Paginate`, `Collect` |
+| package `einvoice` | `VerifyWebhook`, `SignWebhookPayload`, `ComputeWebhookSignature`, `ParseSignatureHeader`, `Paginate`, `Collect`, `CodeListItems` |
 
 - `TaxConnection.GetWithQuery(ctx, &einvoice.GetTaxConnectionQuery{Identifier: einvoice.Ptr(einvoice.GetTaxConnectionQueryIdentifierTrue)})`
   also says which number the tax authority holds for the organisation, its TIN or its 13-digit Tax
   ID (`EinvoicingIdentifier`, or `IdentifierNextAction` when it holds none); `Fresh` asks again.
   Both are rationed. `Get(ctx, ...RequestOption)` is unchanged and makes no lookup (einvoice-js
   overloads `taxConnection.get`; Go adds a method instead).
+- `Reference.GetResource(ctx, "states")` and `GetResource(ctx, "lgas")` have a fixed item shape,
+  which `einvoice.CodeListItems` decodes: a state is `StateOption` `{Code, Name}` (`NG-LA` Lagos)
+  and an LGA is `LGAOption` `{Code, Name, StateCode}` (`NG-LA-IKE` Ikeja, in `NG-LA`);
+  `"countries"` is `CountryOption` `{Code, Name}`. For a State and LGA picker, read both once and
+  filter the LGAs by the chosen state's `Code`:
+  `lgas, err := einvoice.CodeListItems[einvoice.LGAOption](list)`.
+- `Buyers`: for a Nigerian address, `Address.State` and `Address.Lga` are a state and an LGA from
+  those lists: the code, or the exact name, which is stored as the code. A value that is not on the
+  list is refused with 400 `VAL202` (state) or `VAL203` (LGA, also when it belongs to another
+  state). Both are optional, and free text for other countries.
+- Sub-organisations: an organisation that runs several businesses holds them as sub-organisations.
+  No key preset includes `organization.children.read` or `organization.children.create`: an Owner
+  or Admin adds them to a key by name, under Sub-organisations in the dashboard's Create API Key
+  dialog.
+  - `Organization.ListSubOrganizations(ctx, &einvoice.ListSubOrganizationsQuery{Page, Limit, Search, IDs})`
+    (`GET /a/v1/organizations/me/children`) answers a page, newest first, with the total in
+    `Pagination`; 100 a page at most. `IDs` (a list, at most 100) keeps only the ones named. It
+    works in sandbox and live, and with `Paginate`.
+  - `Organization.ListSubOrganizationsReadiness` (`GET /a/v1/organizations/me/children/readiness`)
+    answers the same page with each sub-organisation's checklist, `LiveStatus` and `NextStep`.
+  - `Organization.CreateSubOrganization(ctx, &einvoice.CreateSubOrganizationBody{BusinessName, Email, PhoneNumber, Website})`
+    (`POST /a/v1/organizations`) needs a live key (a sandbox key is refused with 403 `BIZ003`). The
+    new organisation is recorded under the parent's longest-standing Owner and is
+    `pending_verification` until it completes its own onboarding. No `Idempotency-Key` is sent and
+    the SDK does not retry it: a name is unique under its parent, so a repeat answers 409 `RES002`.
+    402 `BIZ016` when the plan allows no more organisations; 60 calls a minute for each key.
+  - `TaxConnection.ListForSubOrganizations(ctx, &einvoice.SubOrganizationTaxConnectionsQuery{IDs: ids})`
+    (`GET /i/v1/tax-connection/children?ids=`, `tax_connection.read`) is for a parent organisation:
+    the state of each named sub-organisation's connection in the key's mode, and whether a
+    submission would pass. At most 100 ids, each once. An id that is not one of the organisation's
+    sub-organisations is left out of the answer.
+  - `IDs` is an `einvoice.IDs`, a `[]string`: `IDs: []string{"a", "b"}`. It is sent as one
+    comma-separated value (`ids=a,b`), as the API reads it, never as a repeated key.
+  - The parent's `organization.child.created` webhook carries `keyId` when a key created the
+    sub-organisation: decode it into `einvoice.OrganizationChildCreatedData`.
+- `Billing.Partner.GetWithQuery(ctx, &einvoice.GetPartnerQuery{Page: einvoice.Ptr(int64(2)), Limit: einvoice.Ptr(int64(50))})`
+  (`GET /b/v1/partner?page=&limit=`) reads another page of the businesses the partner pays for;
+  the answer's `BusinessesPage` says which page and how many there are in all. `Get(ctx,
+  ...RequestOption)` is unchanged and answers the first page (einvoice-js overloads
+  `billing.partner.get`; Go adds a method instead).
 - `Collections` answers only where collections are switched on for the key's mode; elsewhere 409
   `BIZ120`. Its writes (`CreateAccount`, `DeactivateAccount`, `ResolveException`) take no
   `Idempotency-Key` and are not retried.
@@ -263,7 +315,9 @@ methods in 27 modules: einvoice-js's 122, plus `TaxConnection.GetWithQuery` (see
   in `ExcludedOperations`.
 
 Account management (users, roles, API keys, purchases, webhook endpoint settings) is done in the
-Yona dashboard, not through the API key.
+Yona dashboard, not through the API key. So is managing a sub-organisation (its profile, members,
+onboarding, tax connection): in the dashboard, signed in to that sub-organisation. A key lists
+sub-organisations and creates one.
 
 ## Configuration
 

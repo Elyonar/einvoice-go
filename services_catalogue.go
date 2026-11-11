@@ -1,6 +1,9 @@
 package einvoice
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+)
 
 // ItemsService is saved items (`/i/v1/items`): the goods and services an invoice line can reference by `ItemID`.
 type ItemsService struct{ baseService }
@@ -85,7 +88,11 @@ func (s *ReferenceService) ListResources(ctx context.Context, opts ...RequestOpt
 }
 
 // GetResource is one code list's items, e.g. `currencies`, `tax-categories` (`reference.read`; free;
-// 404 for a type not served).
+// 404 for a type not served). Three lists have a fixed item shape, which CodeListItems decodes:
+// `countries` is CountryOption `{code, name}`, `states` is StateOption `{code, name}` (Nigeria:
+// `NG-LA` Lagos) and `lgas` is LGAOption `{code, name, stateCode}` (Nigeria: `NG-LA-IKE` Ikeja, in
+// `NG-LA`). For a State and LGA picker, read both once and filter the LGAs by the chosen state's
+// Code; a buyer's address takes these codes.
 func (s *ReferenceService) GetResource(ctx context.Context, listType string, opts ...RequestOption) (*GetInvoiceReferenceListData, error) {
 	out := &GetInvoiceReferenceListData{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/i/v1/invoices/resources/" + seg(listType), Options: requestOptions(opts)}, out)
@@ -107,4 +114,42 @@ func (s *ReferenceService) ValidateInvoice(ctx context.Context, params *Validate
 	out := &ValidateInvoiceData{}
 	err := s.call(ctx, Call{Method: "POST", Path: "/i/v1/invoices/validate", Body: params, Idempotent: true, Options: requestOptions(opts)}, out)
 	return out, err
+}
+
+// CountryOption is an item of the `countries` code list: ISO 3166-1 alpha-2.
+type CountryOption = CountryOptionDto
+
+// StateOption is an item of the `states` code list. Nigeria: ISO 3166-2, e.g. `NG-LA` Lagos.
+type StateOption struct {
+	Code string `json:"code"`
+	Name string `json:"name"`
+}
+
+// LGAOption is an item of the `lgas` code list; StateCode is its state's Code. Nigeria:
+// `NG-LA-IKE` Ikeja, in `NG-LA`.
+type LGAOption struct {
+	Code      string `json:"code"`
+	Name      string `json:"name"`
+	StateCode string `json:"stateCode"`
+}
+
+// CodeListItems decodes the items of a code list (Reference.GetResource) into T: StateOption for
+// `states`, LGAOption for `lgas`, CountryOption for `countries`, or a struct of your own for
+// another list.
+//
+//	list, err := client.Reference.GetResource(ctx, "lgas")
+//	lgas, err := einvoice.CodeListItems[einvoice.LGAOption](list)
+func CodeListItems[T any](list *GetInvoiceReferenceListData) ([]T, error) {
+	if list == nil {
+		return nil, nil
+	}
+	raw, err := json.Marshal(list.Items)
+	if err != nil {
+		return nil, err
+	}
+	out := []T{}
+	if err := json.Unmarshal(raw, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }

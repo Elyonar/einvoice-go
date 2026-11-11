@@ -152,9 +152,20 @@ func (s *PlansService) GetRecommendation(ctx context.Context, opts ...RequestOpt
 type PartnerService struct{ baseService }
 
 // Get is the partner account: tier, seats, capacity and renewal (`billing.subscription.read`).
+// Businesses is the first page of the businesses the partner pays for, oldest first, 100 at most;
+// GetWithQuery reads another page.
 func (s *PartnerService) Get(ctx context.Context, opts ...RequestOption) (*GetPartnerData, error) {
+	return s.GetWithQuery(ctx, nil, opts...)
+}
+
+// GetWithQuery is Get with the query (`billing.subscription.read`): Businesses is one page of the
+// businesses the partner pays for, oldest first, and BusinessesPage says which page and how many
+// there are in all. Pass Page and Limit for another (100 a page, the most, when Limit is left out).
+// A nil query is Get. (einvoice-js overloads `billing.partner.get(query, options)`; Go keeps Get's
+// signature and adds this method.)
+func (s *PartnerService) GetWithQuery(ctx context.Context, query *GetPartnerQuery, opts ...RequestOption) (*GetPartnerData, error) {
 	out := &GetPartnerData{}
-	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/partner", Options: requestOptions(opts)}, out)
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/partner", Query: query, Options: requestOptions(opts)}, out)
 	return out, err
 }
 

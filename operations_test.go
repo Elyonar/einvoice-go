@@ -64,6 +64,9 @@ var preferredMethod = map[string]string{
 	// TaxConnection.Get is GetWithQuery without the query; the map shows the call that takes the
 	// operation's query, as einvoice-js shows taxConnection.get({{query}}).
 	"getTaxConnection": "TaxConnection.GetWithQuery",
+	// Likewise Billing.Partner.Get is GetWithQuery without the query (einvoice-js shows
+	// billing.partner.get({{query}})).
+	"getPartner": "Billing.Partner.GetWithQuery",
 }
 
 type operationLiteral struct {

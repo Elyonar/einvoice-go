@@ -232,8 +232,24 @@ var parityMethods = []parityEntry{
 		_, err := c.TaxConnection.GetWithQuery(ctx, &GetTaxConnectionQuery{Identifier: Ptr(GetTaxConnectionQueryIdentifierTrue)})
 		return err
 	}},
+	{"TaxConnection.ListForSubOrganizations", func(ctx context.Context, c *Client) error {
+		_, err := c.TaxConnection.ListForSubOrganizations(ctx, &SubOrganizationTaxConnectionsQuery{IDs: IDs{"ID1", "ID2"}})
+		return err
+	}},
 	{"Organization.Get", func(ctx context.Context, c *Client) error { _, err := c.Organization.Get(ctx, "ID1"); return err }},
 	{"Organization.GetReadiness", func(ctx context.Context, c *Client) error { _, err := c.Organization.GetReadiness(ctx); return err }},
+	{"Organization.ListSubOrganizations", func(ctx context.Context, c *Client) error {
+		_, err := c.Organization.ListSubOrganizations(ctx, nil)
+		return err
+	}},
+	{"Organization.ListSubOrganizationsReadiness", func(ctx context.Context, c *Client) error {
+		_, err := c.Organization.ListSubOrganizationsReadiness(ctx, nil)
+		return err
+	}},
+	{"Organization.CreateSubOrganization", func(ctx context.Context, c *Client) error {
+		_, err := c.Organization.CreateSubOrganization(ctx, &CreateSubOrganizationBody{})
+		return err
+	}},
 
 	{"Billing.Accounts.GetMine", func(ctx context.Context, c *Client) error { _, err := c.Billing.Accounts.GetMine(ctx, nil); return err }},
 	{"Billing.Accounts.GetStats", func(ctx context.Context, c *Client) error {
@@ -313,6 +329,10 @@ var parityMethods = []parityEntry{
 	}},
 	{"Billing.Partner.Get", func(ctx context.Context, c *Client) error {
 		_, err := c.Billing.Partner.Get(ctx)
+		return err
+	}},
+	{"Billing.Partner.GetWithQuery", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Partner.GetWithQuery(ctx, &GetPartnerQuery{Page: Ptr(int64(2)), Limit: Ptr(int64(50))})
 		return err
 	}},
 	{"Billing.Partner.GetOffer", func(ctx context.Context, c *Client) error {
@@ -655,10 +675,12 @@ func TestParityPATCHRoutesThatAcceptAKeySendItOnlyWhenTheCallerGivesOne(t *testi
 
 func TestParityTheMethodCountIsTheDocumentedSurface(t *testing.T) {
 	calls := recordCalls(t)
-	// einvoice-js 0.9.0 has 122 methods in 27 modules; Go adds TaxConnection.GetWithQuery, its form of
-	// the overloaded taxConnection.get(query, options), so Get keeps its 0.8 signature.
-	if len(calls) != 123 {
-		t.Fatalf("%d methods: 123 methods in 27 modules at einvoice-js 0.9.0 (update CLAUDE.md and README when this changes)", len(calls))
+	// einvoice-js d3bc2d4 (to be 0.9.1) has 126 methods in 27 modules; Go adds
+	// TaxConnection.GetWithQuery and Billing.Partner.GetWithQuery, its form of the overloaded
+	// taxConnection.get(query, options) and billing.partner.get(query, options), so each Get keeps
+	// its earlier signature.
+	if len(calls) != 128 {
+		t.Fatalf("%d methods: 128 methods in 27 modules at einvoice-js d3bc2d4 (update CLAUDE.md and README when this changes)", len(calls))
 	}
 	modules := map[string]bool{}
 	for _, c := range calls {
