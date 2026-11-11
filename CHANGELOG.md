@@ -3,6 +3,40 @@
 All notable changes to this project will be documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+In line with `@useyona/einvoice-js` 0.9.1 (the Yona API as of 11 Nov 2026): the 138 operations an
+API key may call (134 before), 13 documented exclusions.
+
+### Added
+
+- `client.Organization.ListSubOrganizations`, `ListSubOrganizationsReadiness` and
+  `CreateSubOrganization`: a parent organisation's sub-organisations, how ready each is for live,
+  and creating one. They need `organization.children.read` / `organization.children.create`, which
+  no key preset includes; creating needs a live key (a sandbox key is refused with 403 `BIZ003`),
+  sends no `Idempotency-Key` and is not retried (a repeat answers 409 `RES002`).
+- `client.TaxConnection.ListForSubOrganizations(ctx, query, opts...)`: the connection state of up to
+  100 sub-organisations, and whether a submission would pass.
+- `einvoice.IDs`, a `[]string` for the `ids` of those queries (`IDs: []string{"a", "b"}`): it reaches
+  the API as one comma-separated value (`ids=a,b`), never as a repeated key.
+- `client.Billing.Partner.GetWithQuery(ctx, query, opts...)`: `Page` and `Limit` page the partner's
+  businesses, and the answer carries `BusinessesPage`. `Get(ctx, opts...)` keeps its signature.
+- `einvoice.CodeListItems[T]` with `StateOption`, `LGAOption` and `CountryOption`: the typed items of
+  `client.Reference.GetResource(ctx, "states" | "lgas" | "countries")`. A buyer's Nigerian address
+  takes those codes: 400 `VAL202` (state) or `VAL203` (LGA) otherwise.
+- `einvoice.OrganizationChildCreatedData`: the payload of `organization.child.created`, which
+  carries `keyId` when an API key created the sub-organisation.
+- Two examples, also in `guides/guides.json`: `states-and-lgas` and `sub-organisations`.
+
+### Changed
+
+- The generated models follow the API; every change adds. The organisation address gains `lga`, the
+  organisation `onboardingProfile`, readiness `profile` and `liveRejection`, the billing plan
+  `coveredBy`, payments `netMinor`, `vatMinor`, `serviceFeeItem` and the kind `service_fee`, and
+  plan-change quotes the reason `renewal_in_progress`.
+- `guides/operations.json` covers 125 operations (121 before); `getPartner` is shown as
+  `Billing.Partner.GetWithQuery`, which takes the operation's query.
+
 ## 0.2.0 (2026-11-04)
 
 In line with `@useyona/einvoice-js` 0.9.0: the 134 operations an API key may call, 13 documented

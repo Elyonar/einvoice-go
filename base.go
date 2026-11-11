@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -215,6 +216,35 @@ func (s *baseService) binary(ctx context.Context, c Call) (*BinaryResponse, erro
 		return res.Binary, nil
 	}
 	return &BinaryResponse{Data: []byte(res.Data), ContentType: res.Header.Get("Content-Type"), RequestID: res.RequestID}, nil
+}
+
+// IDs is a list of ids in a query (`IDs: []string{"a", "b"}`). The API reads one comma-separated
+// value (`ids=a,b`) and refuses a repeated key, so a query sends an IDs that way. A string that is
+// already comma-separated may be given as one element.
+type IDs []string
+
+// String is the ids as the API reads them: joined with commas.
+func (ids IDs) String() string { return strings.Join(ids, ",") }
+
+// MarshalJSON writes the ids as the API's comma-separated string.
+func (ids IDs) MarshalJSON() ([]byte, error) { return json.Marshal(ids.String()) }
+
+// UnmarshalJSON reads a list of ids, or the API's comma-separated string.
+func (ids *IDs) UnmarshalJSON(data []byte) error {
+	var list []string
+	if err := json.Unmarshal(data, &list); err == nil {
+		*ids = list
+		return nil
+	}
+	var joined string
+	if err := json.Unmarshal(data, &joined); err != nil {
+		return err
+	}
+	*ids = nil
+	if joined != "" {
+		*ids = strings.Split(joined, ",")
+	}
+	return nil
 }
 
 // Ptr returns a pointer to v, for the optional fields of the generated query and body structs:

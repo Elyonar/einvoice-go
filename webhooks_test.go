@@ -212,6 +212,19 @@ func TestGoInputsAcceptHTTPHeaderInAnyNameCaseAndTheEventDecodes(t *testing.T) {
 	}
 }
 
+func TestOrganizationChildCreatedDataCarriesKeyIDOnlyWhenAnAPIKeyCreatedIt(t *testing.T) {
+	byKey := WebhookEvent{Type: WebhookEventOrganizationChildCreated, Data: json.RawMessage(`{"childOrganizationId":"c9","actorUserId":"u1","keyId":"k1"}`)}
+	var data OrganizationChildCreatedData
+	if err := byKey.DecodeData(&data); err != nil || data.ChildOrganizationID != "c9" || data.ActorUserID != "u1" || data.KeyID == nil || *data.KeyID != "k1" {
+		t.Fatalf("%+v %v", data, err)
+	}
+	byPerson := WebhookEvent{Type: WebhookEventOrganizationChildCreated, Data: json.RawMessage(`{"childOrganizationId":"c9","actorUserId":"u1"}`)}
+	data = OrganizationChildCreatedData{}
+	if err := byPerson.DecodeData(&data); err != nil || data.ChildOrganizationID != "c9" || data.KeyID != nil {
+		t.Fatalf("%+v %v", data, err)
+	}
+}
+
 func TestGoInputsRefuseANonJSONBodyAndNilHeaders(t *testing.T) {
 	v, body := loadVectors(t)
 	raw := []byte("not json")

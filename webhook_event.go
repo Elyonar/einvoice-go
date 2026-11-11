@@ -172,3 +172,16 @@ func (e *WebhookEvent) DataMap() map[string]any {
 	}
 	return m
 }
+
+// OrganizationChildCreatedData is the Data of `organization.child.created`, sent to the parent when
+// a sub-organisation is created (decode it with DecodeData). Ids only: read its name and status
+// with Organization.ListSubOrganizations and IDs.
+type OrganizationChildCreatedData struct {
+	// ChildOrganizationID is the new sub-organisation.
+	ChildOrganizationID string `json:"childOrganizationId"`
+	// ActorUserID is the person it is recorded under: who created it, or the parent's Owner when an
+	// API key did.
+	ActorUserID string `json:"actorUserId"`
+	// KeyID is that key's id; nil unless an API key created it.
+	KeyID *string `json:"keyId,omitempty"`
+}

@@ -21,7 +21,7 @@ import (
 )
 
 // Order is the example ids in the order the guides list them.
-var Order = []string{"first-invoice", "webhooks", "errors-and-retries", "sandbox-and-live", "received-invoices"}
+var Order = []string{"first-invoice", "webhooks", "errors-and-retries", "sandbox-and-live", "received-invoices", "states-and-lgas", "sub-organisations"}
 
 // Root finds the repository root (the directory holding go.mod) from the working directory.
 func Root() (string, error) {
