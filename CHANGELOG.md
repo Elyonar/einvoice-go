@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## 0.2.2 (2026-11-12)
 
 In line with `@useyona/einvoice-js` 0.9.2: held invoices, and the tax connection waiting for the
 tax authority to list the business. No new methods; every change adds.
