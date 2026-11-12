@@ -266,6 +266,22 @@ methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
   ID (`EinvoicingIdentifier`, or `IdentifierNextAction` when it holds none); `Fresh` asks again.
   Both are rationed. `Get(ctx, ...RequestOption)` is unchanged and makes no lookup (einvoice-js
   overloads `taxConnection.get`; Go adds a method instead).
+- Held invoices: while an organisation's connection to the tax authority is still in progress, an
+  invoice it issues is not refused. `Submissions.Issue` answers `Reporting: "held"` with
+  `NotReportedReason: "awaiting_connection"`, the invoice is sent to the buyer, and Yona reports it
+  automatically once the connection completes. Until then the invoice's `Reporting.State` is
+  `held`; `Invoices.List` with `Reporting: einvoice.Ptr(einvoice.ListInvoicesQueryReportingHeld)`
+  lists them and `Invoices.GetSummary` counts them in `Held`. If one cannot be reported when the
+  connection completes, its `Reporting.Reason` is `release_refused`: report it yourself with
+  `Submissions.Submit`.
+- `TaxConnection.Get`: `State` can be `awaiting_authority_listing`. The business asked to connect
+  and the tax authority does not list it under any of its numbers yet. Yona asks the authority
+  again every 6 hours and carries on by itself once the business is listed. `Listing` then holds
+  `Since`, `CheckedAt`, `NextCheckAt` and the last `Answer` (`unknown`, `elsewhere`, `unanswered`
+  or `held_elsewhere`); it is nil in every other state. `ConnectWaits` says whether connecting now
+  would wait like this instead of being refused. The `tax_connection.action_required` webhook is
+  sent for this state too, and `invoice.finalised` can carry `reporting` (decode it into
+  `einvoice.InvoiceFinalisedData`), so a handler can tell a held invoice from one being reported.
 - `Reference.GetResource(ctx, "states")` and `GetResource(ctx, "lgas")` have a fixed item shape,
   which `einvoice.CodeListItems` decodes: a state is `StateOption` `{Code, Name}` (`NG-LA` Lagos)
   and an LGA is `LGAOption` `{Code, Name, StateCode}` (`NG-LA-IKE` Ikeja, in `NG-LA`);

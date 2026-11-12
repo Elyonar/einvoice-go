@@ -185,3 +185,27 @@ type OrganizationChildCreatedData struct {
 	// KeyID is that key's id; nil unless an API key created it.
 	KeyID *string `json:"keyId,omitempty"`
 }
+
+// InvoiceFinalisedData is the Data of `invoice.finalised`, sent when an invoice is finalised
+// (issued); decode it with DecodeData.
+type InvoiceFinalisedData struct {
+	InvoiceID     string `json:"invoiceId"`
+	Status        string `json:"status"`
+	InvoiceNumber string `json:"invoiceNumber"`
+	// Currency is ISO 4217.
+	Currency string `json:"currency"`
+	// PayableMinor is what is payable, in minor units.
+	PayableMinor int64 `json:"payableMinor"`
+	// Reporting, when present, says how the invoice stands with the tax authority at that moment.
+	// Nil on older deliveries, and on deliveries from before this field existed.
+	Reporting *InvoiceFinalisedReporting `json:"reporting,omitempty"`
+}
+
+// InvoiceFinalisedReporting is the Reporting of InvoiceFinalisedData, with the same values as the
+// invoice's own reporting: State `held` means it was issued while the connection to the tax
+// authority was still in progress and will be reported automatically once it completes. Treat a
+// value you do not know as "not yet reported".
+type InvoiceFinalisedReporting struct {
+	State  string  `json:"state"`
+	Reason *string `json:"reason"`
+}

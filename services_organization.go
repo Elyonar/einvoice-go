@@ -120,7 +120,8 @@ func (s *InvoiceSettingsService) Get(ctx context.Context, opts ...RequestOption)
 type TaxConnectionService struct{ baseService }
 
 // Get is the connection's state in the key's mode, its key and the next step (`tax_connection.read`).
-// It makes no identifier lookup; GetWithQuery does.
+// It makes no identifier lookup; GetWithQuery does. State can be `awaiting_authority_listing`
+// (see GetWithQuery).
 func (s *TaxConnectionService) Get(ctx context.Context, opts ...RequestOption) (*GetTaxConnectionData, error) {
 	return s.GetWithQuery(ctx, nil, opts...)
 }
@@ -130,6 +131,12 @@ func (s *TaxConnectionService) Get(ctx context.Context, opts ...RequestOption) (
 // `IdentifierNextAction` when it holds none); `Fresh: "true"` asks the authority again. Both are
 // rationed: pass them only when that answer is needed. A nil query is Get. (einvoice-js overloads
 // `taxConnection.get(query, options)`; Go keeps Get's signature and adds this method.)
+//
+// State can be `awaiting_authority_listing`: the business asked to connect, and the tax authority
+// does not list it under any of its numbers yet. Yona asks the authority again every 6 hours
+// (`Fresh: "true"` asks now) and carries on by itself once it is listed; Listing says since when,
+// when it was last asked and is asked next, and what the last answer was. Invoices issued meanwhile
+// are held and reported once the connection completes.
 func (s *TaxConnectionService) GetWithQuery(ctx context.Context, query *GetTaxConnectionQuery, opts ...RequestOption) (*GetTaxConnectionData, error) {
 	out := &GetTaxConnectionData{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/i/v1/tax-connection", Query: query, Options: requestOptions(opts)}, out)

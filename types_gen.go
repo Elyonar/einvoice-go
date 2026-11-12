@@ -2259,10 +2259,10 @@ type PlanChangeDto struct {
 	// MonthlyCredits The new plan’s credits per monthly window.
 	MonthlyCredits int64 `json:"monthlyCredits"`
 
-	// AmountDueMinor What the checkout charges before VAT — the difference between the two prices pro-rated to the days left (R145), or the full new price; null for a period-end change.
+	// AmountDueMinor What the checkout charges before VAT — the difference between the two prices pro-rated to the days left, or the full new price; null for a period-end change.
 	AmountDueMinor *int64 `json:"amountDueMinor"`
 
-	// DaysLeft R145: the whole days left in the period the change was priced on (a started day counts); null when the full price was charged, and for a period-end change.
+	// DaysLeft The whole days left in the period the change was priced on (a started day counts); null when the full price was charged, and for a period-end change.
 	DaysLeft *int64 `json:"daysLeft"`
 
 	// PeriodDays The whole days of that period; null with daysLeft.
@@ -2344,7 +2344,7 @@ type PlanChangeQuoteImmediateDto struct {
 	// RetryAt The instant after which a new quote can be given, when a refusal names one; null otherwise (`window_boundary_near` now means the period end is too near for a checkout: change at the period end instead).
 	RetryAt *string `json:"retryAt"`
 
-	// AmountDueMinor What the checkout would charge before VAT (R145): the difference between the two prices pro-rated to the days left in the period — negative for a downgrade, which is available at period end only — or the full new price when nothing is pro-rated (`daysLeft` null).
+	// AmountDueMinor What the checkout would charge before VAT: the difference between the two prices pro-rated to the days left in the period — negative for a downgrade, which is available at period end only — or the full new price when nothing is pro-rated (`daysLeft` null).
 	AmountDueMinor int64 `json:"amountDueMinor"`
 
 	// DaysLeft The whole days left in the current period (a started day counts) the quote is pro-rated to; null when the full price is quoted (`past_due`, the period over, or a change of interval).
@@ -2549,7 +2549,7 @@ type SettlementAccountDto struct {
 
 	Status SettlementAccountDtoStatus `json:"status"`
 
-	// Unreachable True when the bank account this row names was closed at the banking partner (the organisation’s payments account, docs/specs/payments.md §2.8): payouts cannot reach it until a new settlement account is registered.
+	// Unreachable True when the bank account this row names was closed at the banking partner (the organisation’s payments account): payouts cannot reach it until a new settlement account is registered.
 	Unreachable bool `json:"unreachable"`
 
 	CreatedAt string `json:"createdAt"`
@@ -3348,6 +3348,7 @@ type ChildConnectionViewDtoState string
 // Values of ChildConnectionViewDtoState.
 const (
 	ChildConnectionViewDtoStateNotConnected              ChildConnectionViewDtoState = "not_connected"
+	ChildConnectionViewDtoStateAwaitingAuthorityListing  ChildConnectionViewDtoState = "awaiting_authority_listing"
 	ChildConnectionViewDtoStatePendingTaxpayerEnablement ChildConnectionViewDtoState = "pending_taxpayer_enablement"
 	ChildConnectionViewDtoStatePendingGrantApproval      ChildConnectionViewDtoState = "pending_grant_approval"
 	ChildConnectionViewDtoStatePendingKey                ChildConnectionViewDtoState = "pending_key"
@@ -3523,6 +3524,7 @@ type ConnectionViewDtoState string
 // Values of ConnectionViewDtoState.
 const (
 	ConnectionViewDtoStateNotConnected              ConnectionViewDtoState = "not_connected"
+	ConnectionViewDtoStateAwaitingAuthorityListing  ConnectionViewDtoState = "awaiting_authority_listing"
 	ConnectionViewDtoStatePendingTaxpayerEnablement ConnectionViewDtoState = "pending_taxpayer_enablement"
 	ConnectionViewDtoStatePendingGrantApproval      ConnectionViewDtoState = "pending_grant_approval"
 	ConnectionViewDtoStatePendingKey                ConnectionViewDtoState = "pending_key"
@@ -3635,15 +3637,21 @@ type ConnectionViewDto struct {
 	// LegalNameMatches Whether that profile’s business name is the organisation’s verified legal name (case, spacing, punctuation and `LTD`/`LIMITED` ignored); null when either is unknown.
 	LegalNameMatches *bool `json:"legalNameMatches"`
 
-	// EinvoicingIdentifier R151: the number the tax authority holds for the organisation on Yona’s access point — the live connection’s, else the first of the organisation’s numbers (its recorded TIN, then its verified tax id) the authority’s participant lookup finds. Null while the identifier switch is off, without a verified tax id, or when none resolved (`identifierNextAction` says why).
+	// EinvoicingIdentifier The number the tax authority holds for the organisation on Yona’s access point — the live connection’s, else the first of the organisation’s numbers (its recorded TIN, then its verified tax id) the authority’s participant lookup finds. Null where identifier lookup is not enabled, without a verified tax id, or when none resolved (`identifierNextAction` says why).
 	// Example: "2522523318294".
 	EinvoicingIdentifier *string `json:"einvoicingIdentifier"`
 
-	// IdentifierSource R151: where `einvoicingIdentifier` came from — `tin` (the e-invoicing TIN recorded beside the tax id) or `tax_id` (the verified tax id); null with no identifier.
+	// IdentifierSource Where `einvoicingIdentifier` came from — `tin` (the e-invoicing TIN recorded beside the tax id) or `tax_id` (the verified tax id); null with no identifier.
 	IdentifierSource *ConnectionViewDtoIdentifierSource `json:"identifierSource"`
 
-	// IdentifierNextAction R151: why no number resolved — `add_tin` (no TIN recorded and the authority does not know the tax id), `enable_on_nrs` (the authority knows neither number), `choose_elyonar` (the authority lists the business with another access point provider), `retry` (the authority could not be asked). With no live connection it is also `nextAction.code`. Null when resolved, connected, or not computed; `?fresh=true` asks again.
+	// IdentifierNextAction Why no number resolved — `add_tin` (no TIN recorded and the authority does not know the tax id), `enable_on_nrs` (the authority knows neither number), `choose_elyonar` (the authority lists the business with another access point provider), `retry` (the authority could not be asked). With no live connection it is also `nextAction.code`. Null when resolved, connected, or not computed; `?fresh=true` asks again.
 	IdentifierNextAction *ConnectionViewDtoIdentifierNextAction `json:"identifierNextAction"`
+
+	// ConnectWaits True when connecting now waits instead of being refused: `identifierNextAction` is `add_tin` or `enable_on_nrs` and this environment lets a business the tax authority does not list yet connect and wait (`state` becomes `awaiting_authority_listing`). False otherwise, including whenever `identifierNextAction` is null.
+	ConnectWaits bool `json:"connectWaits"`
+
+	// Listing While `state` is `awaiting_authority_listing` (the tax authority lists the business under none of its numbers yet, so no grant is requested), when it started waiting and when the authority is asked again; null in every other state.
+	Listing *ListingViewDto `json:"listing"`
 }
 
 // CountryOptionDto is `invoice.CountryOptionDto`.
@@ -4855,7 +4863,7 @@ type InvoiceListSummaryDto struct {
 
 	Drafts int64 `json:"drafts"`
 
-	// Issued Not drafts: `notReported + inProgress + reported + needsAttention`.
+	// Issued Not drafts: `notReported + inProgress + reported + needsAttention + held`.
 	Issued int64 `json:"issued"`
 
 	NotReported int64 `json:"notReported"`
@@ -4866,6 +4874,9 @@ type InvoiceListSummaryDto struct {
 
 	// NeedsAttention Rejected or on hold, not cancelled.
 	NeedsAttention int64 `json:"needsAttention"`
+
+	// Held Issued while the connection to the tax authority was in progress; reported automatically once it completes.
+	Held int64 `json:"held"`
 
 	// Outstanding Per currency: what buyers still owe on issued invoices, net of credit notes.
 	Outstanding []CurrencyAmountCountDto `json:"outstanding"`
@@ -5004,6 +5015,7 @@ const (
 	InvoiceReportingDtoStateReported     InvoiceReportingDtoState = "reported"
 	InvoiceReportingDtoStateRejected     InvoiceReportingDtoState = "rejected"
 	InvoiceReportingDtoStateOnHold       InvoiceReportingDtoState = "on_hold"
+	InvoiceReportingDtoStateHeld         InvoiceReportingDtoState = "held"
 )
 
 // InvoiceReportingDtoDelivery is the type of InvoiceReportingDto.Delivery. The API may add values.
@@ -5027,6 +5039,7 @@ const (
 	InvoiceReportingDtoReasonB2CInvalidTIN       InvoiceReportingDtoReason = "b2c_invalid_tin"
 	InvoiceReportingDtoReasonB2C                 InvoiceReportingDtoReason = "b2c"
 	InvoiceReportingDtoReasonPermissionWithdrawn InvoiceReportingDtoReason = "permission_withdrawn"
+	InvoiceReportingDtoReasonReleaseRefused      InvoiceReportingDtoReason = "release_refused"
 )
 
 // InvoiceReportingDtoNextAction is the type of InvoiceReportingDto.NextAction. The API may add values.
@@ -5040,7 +5053,7 @@ const (
 
 // InvoiceReportingDto is `invoice.InvoiceReportingDto`.
 type InvoiceReportingDto struct {
-	// State How the document stands with the tax authority.
+	// State How the document stands with the tax authority. `held`: issued while the connection to the tax authority was in progress; it is reported automatically once the connection completes.
 	State InvoiceReportingDtoState `json:"state"`
 
 	// Delivery How the buyer gets the document.
@@ -5048,7 +5061,7 @@ type InvoiceReportingDto struct {
 
 	DeliveredAt *string `json:"deliveredAt"`
 
-	// Reason Why the document is delivered the way it is, when that needs saying.
+	// Reason Why the document is delivered the way it is, when that needs saying. `release_refused`: issued while the connection to the tax authority was in progress, and it could not be reported automatically once connected; report it from the invoice.
 	Reason *InvoiceReportingDtoReason `json:"reason"`
 
 	Irn *string `json:"irn"`
@@ -5165,6 +5178,7 @@ type InvoiceSetupTaxConnectionDtoState string
 
 // Values of InvoiceSetupTaxConnectionDtoState.
 const (
+	InvoiceSetupTaxConnectionDtoStateAwaitingAuthorityListing  InvoiceSetupTaxConnectionDtoState = "awaiting_authority_listing"
 	InvoiceSetupTaxConnectionDtoStatePendingTaxpayerEnablement InvoiceSetupTaxConnectionDtoState = "pending_taxpayer_enablement"
 	InvoiceSetupTaxConnectionDtoStatePendingGrantApproval      InvoiceSetupTaxConnectionDtoState = "pending_grant_approval"
 	InvoiceSetupTaxConnectionDtoStatePendingKey                InvoiceSetupTaxConnectionDtoState = "pending_key"
@@ -5564,6 +5578,7 @@ type IssueAnswerDtoReporting string
 const (
 	IssueAnswerDtoReportingQueued      IssueAnswerDtoReporting = "queued"
 	IssueAnswerDtoReportingNotReported IssueAnswerDtoReporting = "not_reported"
+	IssueAnswerDtoReportingHeld        IssueAnswerDtoReporting = "held"
 )
 
 // IssueAnswerDtoNotReportedReason is the type of IssueAnswerDto.NotReportedReason. The API may add values.
@@ -5571,8 +5586,9 @@ type IssueAnswerDtoNotReportedReason string
 
 // Values of IssueAnswerDtoNotReportedReason.
 const (
-	IssueAnswerDtoNotReportedReasonNotConnected  IssueAnswerDtoNotReportedReason = "not_connected"
-	IssueAnswerDtoNotReportedReasonAutoReportOff IssueAnswerDtoNotReportedReason = "auto_report_off"
+	IssueAnswerDtoNotReportedReasonNotConnected       IssueAnswerDtoNotReportedReason = "not_connected"
+	IssueAnswerDtoNotReportedReasonAutoReportOff      IssueAnswerDtoNotReportedReason = "auto_report_off"
+	IssueAnswerDtoNotReportedReasonAwaitingConnection IssueAnswerDtoNotReportedReason = "awaiting_connection"
 )
 
 // IssueAnswerDto is `invoice.IssueAnswerDto`.
@@ -5582,10 +5598,10 @@ type IssueAnswerDto struct {
 	// Submission The queued submission when the invoice is being reported; null otherwise.
 	Submission *SubmissionViewDto `json:"submission"`
 
-	// Reporting `queued`: being reported; `not_reported`: finalised and sent, not reported.
+	// Reporting `queued`: being reported; `not_reported`: finalised and sent, not reported; `held`: finalised and sent, and reported to the tax authority automatically once the connection to it completes.
 	Reporting IssueAnswerDtoReporting `json:"reporting"`
 
-	// NotReportedReason Why the invoice was not reported; null when it was queued.
+	// NotReportedReason Why the invoice was not reported; null when it was queued. `awaiting_connection`: the connection to the tax authority is in progress, and the invoice is reported once it completes.
 	NotReportedReason *IssueAnswerDtoNotReportedReason `json:"notReportedReason"`
 
 	// SentToBuyer Whether the document was emailed to the buyer.
@@ -5701,6 +5717,32 @@ type ItemViewDto struct {
 	CreatedAt string `json:"createdAt"`
 
 	UpdatedAt string `json:"updatedAt"`
+}
+
+// ListingViewDtoAnswer is the type of ListingViewDto.Answer. The API may add values.
+type ListingViewDtoAnswer string
+
+// Values of ListingViewDtoAnswer.
+const (
+	ListingViewDtoAnswerUnknown       ListingViewDtoAnswer = "unknown"
+	ListingViewDtoAnswerElsewhere     ListingViewDtoAnswer = "elsewhere"
+	ListingViewDtoAnswerUnanswered    ListingViewDtoAnswer = "unanswered"
+	ListingViewDtoAnswerHeldElsewhere ListingViewDtoAnswer = "held_elsewhere"
+)
+
+// ListingViewDto is `invoice.ListingViewDto`.
+type ListingViewDto struct {
+	// Since When the connection started waiting.
+	Since string `json:"since"`
+
+	// CheckedAt When the tax authority was last asked.
+	CheckedAt *string `json:"checkedAt"`
+
+	// NextCheckAt When it is asked again at the latest (every 6 hours); `?fresh=true` asks now.
+	NextCheckAt *string `json:"nextCheckAt"`
+
+	// Answer What the last check found: `unknown` (none of the numbers is listed), `elsewhere` (listed with another access point provider), `unanswered` (no answer; nothing changed), `held_elsewhere` (listed under a number another organisation on Yona holds; support looks).
+	Answer *ListingViewDtoAnswer `json:"answer"`
 }
 
 // MonthBucketDto is `invoice.MonthBucketDto`.
@@ -7325,7 +7367,7 @@ type BankAccountBalanceDto struct {
 	// AsOf When the bank answered these figures.
 	AsOf string `json:"asOf"`
 
-	// Stale True when the figures are older than the refresh window and the bank could not be asked (LP36).
+	// Stale True when the figures are older than the refresh window and the bank could not be asked.
 	Stale bool `json:"stale"`
 }
 
@@ -8867,6 +8909,7 @@ const (
 	ListInvoicesQueryReportingInProgress     ListInvoicesQueryReporting = "in_progress"
 	ListInvoicesQueryReportingReported       ListInvoicesQueryReporting = "reported"
 	ListInvoicesQueryReportingNeedsAttention ListInvoicesQueryReporting = "needs_attention"
+	ListInvoicesQueryReportingHeld           ListInvoicesQueryReporting = "held"
 )
 
 // ListInvoicesQueryDelivery is the type of ListInvoicesQuery.Delivery. The API may add values.
@@ -8974,7 +9017,7 @@ type ListInvoicesQuery struct {
 	// SimpleStatus Only documents with this simple status (`simpleStatus`).
 	SimpleStatus *ListInvoicesQuerySimpleStatus `json:"simpleStatus,omitempty"`
 
-	// Reporting Only documents at this reporting stage, as the summary cards count them (`needs_attention` = rejected or on hold, not cancelled).
+	// Reporting Only documents at this reporting stage, as the summary cards count them (`needs_attention` = rejected or on hold, not cancelled; `held` = issued while the connection to the tax authority was in progress, reported once it completes).
 	Reporting *ListInvoicesQueryReporting `json:"reporting,omitempty"`
 
 	// Delivery Only documents with this delivery channel (`reporting.delivery`).
@@ -9414,6 +9457,7 @@ const (
 	GetInvoiceListSummaryQueryReportingInProgress     GetInvoiceListSummaryQueryReporting = "in_progress"
 	GetInvoiceListSummaryQueryReportingReported       GetInvoiceListSummaryQueryReporting = "reported"
 	GetInvoiceListSummaryQueryReportingNeedsAttention GetInvoiceListSummaryQueryReporting = "needs_attention"
+	GetInvoiceListSummaryQueryReportingHeld           GetInvoiceListSummaryQueryReporting = "held"
 )
 
 // GetInvoiceListSummaryQueryDelivery is the type of GetInvoiceListSummaryQuery.Delivery. The API may add values.
@@ -9499,7 +9543,7 @@ type GetInvoiceListSummaryQuery struct {
 	// SimpleStatus Only documents with this simple status (`simpleStatus`).
 	SimpleStatus *GetInvoiceListSummaryQuerySimpleStatus `json:"simpleStatus,omitempty"`
 
-	// Reporting Only documents at this reporting stage, as the summary cards count them (`needs_attention` = rejected or on hold, not cancelled).
+	// Reporting Only documents at this reporting stage, as the summary cards count them (`needs_attention` = rejected or on hold, not cancelled; `held` = issued while the connection to the tax authority was in progress, reported once it completes).
 	Reporting *GetInvoiceListSummaryQueryReporting `json:"reporting,omitempty"`
 
 	// Delivery Only documents with this delivery channel (`reporting.delivery`).
@@ -9783,10 +9827,10 @@ const (
 
 // GetTaxConnectionQuery holds the query parameters of GET /i/v1/tax-connection.
 type GetTaxConnectionQuery struct {
-	// Identifier R151: resolve which number the tax authority holds for the organisation (a participant lookup). Without it, or `fresh`, I47 makes no lookup and the identifier fields are null. Ignored while the identifier switch is off or a live connection exists.
+	// Identifier Resolve which number the tax authority holds for the organisation (a participant lookup). Without it, or `fresh`, no lookup is made and the identifier fields are null. Ignored where this lookup is not enabled, or while a live connection exists.
 	Identifier *GetTaxConnectionQueryIdentifier `json:"identifier,omitempty"`
 
-	// Fresh R151, the portal’s "Check again": ask the tax authority which number it holds, past the gateway’s cache. Implies `identifier`. Ignored while the identifier switch is off or a live connection exists.
+	// Fresh The portal’s "Check again": ask the tax authority which number it holds, past the gateway’s cache. Implies `identifier`. Ignored where this lookup is not enabled, or while a live connection exists.
 	Fresh *GetTaxConnectionQueryFresh `json:"fresh,omitempty"`
 }
 

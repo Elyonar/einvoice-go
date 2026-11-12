@@ -225,6 +225,35 @@ func TestOrganizationChildCreatedDataCarriesKeyIDOnlyWhenAnAPIKeyCreatedIt(t *te
 	}
 }
 
+func TestInvoiceFinalisedDataCarriesReportingWhenTheAPISendsItAndStillReadsWithoutIt(t *testing.T) {
+	const secret = "whsec_test_finalised"
+	base := `"id":"evt-1","type":"invoice.finalised","version":1,"createdAt":"2026-11-12T10:00:00Z","mode":"live","organizationId":"org-1"`
+	data := `"invoiceId":"inv-1","status":"finalised","invoiceNumber":"INV-ACME-26-000001","currency":"NGN","payableMinor":150000`
+	const now = int64(1794477600)
+	read := func(body string) InvoiceFinalisedData {
+		t.Helper()
+		h := http.Header{}
+		h.Set(WebhookSignatureHeader, SignWebhookPayload([]byte(body), []string{secret}, now))
+		event, err := VerifyWebhook([]byte(body), h, secret, WithNow(now))
+		if err != nil || event.Type != WebhookEventInvoiceFinalised {
+			t.Fatal(event, err)
+		}
+		var out InvoiceFinalisedData
+		if err := event.DecodeData(&out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	held := read(`{` + base + `,"data":{` + data + `,"reporting":{"state":"held","reason":null}}}`)
+	if held.Reporting == nil || held.Reporting.State != "held" || held.Reporting.Reason != nil {
+		t.Fatalf("%+v", held)
+	}
+	plain := read(`{` + base + `,"data":{` + data + `}}`)
+	if plain.Reporting != nil || plain.PayableMinor != 150000 || plain.InvoiceNumber != "INV-ACME-26-000001" {
+		t.Fatalf("%+v", plain)
+	}
+}
+
 func TestGoInputsRefuseANonJSONBodyAndNilHeaders(t *testing.T) {
 	v, body := loadVectors(t)
 	raw := []byte("not json")
