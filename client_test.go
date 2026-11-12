@@ -459,6 +459,66 @@ func TestClientCodeListItemsTypesTheStatesAndLGALists(t *testing.T) {
 	}
 }
 
+func TestClientHeldInvoicesTheListFilterPassesThroughAndTheAnswersDecodeToTheirOwnConstants(t *testing.T) {
+	pagination := map[string]any{"total": 1, "page": 1, "pageSize": 20, "totalPages": 1, "hasNext": false, "hasPrevious": false}
+	f := newFake(
+		okAnswer([]map[string]any{{"id": "inv-1", "reporting": map[string]any{"state": "held", "reason": "release_refused"}}}, map[string]any{"pagination": pagination}),
+		okAnswer(map[string]any{"held": 3}),
+		okAnswer(map[string]any{"reporting": "held", "notReportedReason": "awaiting_connection", "sentToBuyer": true}),
+	)
+	c := newClient(t, f)
+	ctx := context.Background()
+	page, err := c.Invoices.List(ctx, &ListInvoicesQuery{Reporting: Ptr(ListInvoicesQueryReportingHeld)})
+	if err != nil || len(page.Data) != 1 {
+		t.Fatalf("%+v %v", page, err)
+	}
+	reporting := page.Data[0].Reporting
+	if reporting.State != InvoiceReportingDtoStateHeld || reporting.Reason == nil || *reporting.Reason != InvoiceReportingDtoReasonReleaseRefused {
+		t.Fatalf("%+v", reporting)
+	}
+	if got := f.requests[0].URL.Path + "?" + f.requests[0].URL.RawQuery; got != "/i/v1/invoices?reporting=held" {
+		t.Fatal(got)
+	}
+
+	summary, err := c.Invoices.GetSummary(ctx, &GetInvoiceListSummaryQuery{Reporting: Ptr(GetInvoiceListSummaryQueryReportingHeld)})
+	if err != nil || summary.Held != 3 || f.requests[1].URL.RawQuery != "reporting=held" {
+		t.Fatalf("%+v %v %s", summary, err, f.requests[1].URL.RawQuery)
+	}
+
+	issued, err := c.Submissions.Issue(ctx, "inv-1")
+	if err != nil || issued.Reporting != IssueAnswerDtoReportingHeld || issued.NotReportedReason == nil ||
+		*issued.NotReportedReason != IssueAnswerDtoNotReportedReasonAwaitingConnection || !issued.SentToBuyer {
+		t.Fatalf("%+v %v", issued, err)
+	}
+}
+
+func TestClientTheTaxConnectionCanBeWaitingForTheAuthorityToListTheBusiness(t *testing.T) {
+	f := newFake(
+		okAnswer(map[string]any{"state": "awaiting_authority_listing", "submissionsAllowed": false, "connectWaits": true,
+			"listing": map[string]any{"since": "2026-11-12T09:00:00Z", "checkedAt": nil, "nextCheckAt": "2026-11-12T15:00:00Z", "answer": "held_elsewhere"}}),
+		okAnswer(map[string]any{"state": "connected", "submissionsAllowed": true, "connectWaits": false, "listing": nil}),
+		okAnswer([]map[string]any{{"organizationId": "c1", "state": "awaiting_authority_listing", "submissionsAllowed": false}}),
+	)
+	c := newClient(t, f)
+	ctx := context.Background()
+	waiting, err := c.TaxConnection.Get(ctx)
+	if err != nil || waiting.State != ConnectionViewDtoStateAwaitingAuthorityListing || !waiting.ConnectWaits || waiting.Listing == nil {
+		t.Fatalf("%+v %v", waiting, err)
+	}
+	l := waiting.Listing
+	if l.Since != "2026-11-12T09:00:00Z" || l.CheckedAt != nil || l.NextCheckAt == nil || l.Answer == nil || *l.Answer != ListingViewDtoAnswerHeldElsewhere {
+		t.Fatalf("%+v", l)
+	}
+	connected, err := c.TaxConnection.Get(ctx)
+	if err != nil || connected.State != ConnectionViewDtoStateConnected || connected.Listing != nil || connected.ConnectWaits {
+		t.Fatalf("%+v %v", connected, err)
+	}
+	children, err := c.TaxConnection.ListForSubOrganizations(ctx, &SubOrganizationTaxConnectionsQuery{IDs: IDs{"c1"}})
+	if err != nil || len(children) != 1 || children[0].State != ChildConnectionViewDtoStateAwaitingAuthorityListing {
+		t.Fatalf("%+v %v", children, err)
+	}
+}
+
 func TestClientHasNoPaymentsServiceMethodsUntilPaymentsLaunchesInProduction(t *testing.T) {
 	ct := reflect.TypeOf(Client{})
 	for _, gone := range []string{"BankAccount", "Transfers", "PaymentsAccount"} {

@@ -5165,7 +5165,7 @@
           "name": "reporting",
           "required": false,
           "in": "query",
-          "description": "Only documents at this reporting stage, as the summary cards count them (`needs_attention` = rejected or on hold, not cancelled).",
+          "description": "Only documents at this reporting stage, as the summary cards count them (`needs_attention` = rejected or on hold, not cancelled; `held` = issued while the connection to the tax authority was in progress, reported once it completes).",
           "schema": {
             "type": "string",
             "enum": [
@@ -5173,7 +5173,8 @@
               "not_reported",
               "in_progress",
               "reported",
-              "needs_attention"
+              "needs_attention",
+              "held"
             ]
           }
         },
@@ -6041,7 +6042,7 @@
         "invoice.submit"
       ],
       "summary": "Issue a draft invoice",
-      "description": "Requires `invoice.finalise` and `invoice.submit`. When the organisation is connected to NRS and reports automatically, the draft is finalised and submitted (202). Otherwise it is finalised and sent to the buyer without being reported (200, `notReportedReason` says why). Accepts an `Idempotency-Key`.",
+      "description": "Requires `invoice.finalise` and `invoice.submit`. When the organisation is connected to NRS and reports automatically, the draft is finalised and submitted (202). Otherwise it is finalised and sent to the buyer without being reported (200, `notReportedReason` says why). While the connection to NRS is in progress and the organisation reports automatically, the invoice is held (`reporting: held`) and reported once the connection completes. Accepts an `Idempotency-Key`.",
       "parameters": [
         {
           "name": "id",
@@ -6064,7 +6065,7 @@
       "requestBody": null,
       "responses": {
         "200": {
-          "description": "Finalised and sent to the buyer, not reported.",
+          "description": "Finalised and sent to the buyer, not reported (or held: reported once connected).",
           "content": {
             "application/json": {
               "schema": {
@@ -7765,7 +7766,7 @@
           "name": "reporting",
           "required": false,
           "in": "query",
-          "description": "Only documents at this reporting stage, as the summary cards count them (`needs_attention` = rejected or on hold, not cancelled).",
+          "description": "Only documents at this reporting stage, as the summary cards count them (`needs_attention` = rejected or on hold, not cancelled; `held` = issued while the connection to the tax authority was in progress, reported once it completes).",
           "schema": {
             "type": "string",
             "enum": [
@@ -7773,7 +7774,8 @@
               "not_reported",
               "in_progress",
               "reported",
-              "needs_attention"
+              "needs_attention",
+              "held"
             ]
           }
         },
@@ -9163,13 +9165,13 @@
         "tax_connection.read"
       ],
       "summary": "Get the tax connection",
-      "description": "`tax_connection.read`. The organisation’s connection to the tax authority in the token’s mode — its state, the key, what must happen next — or, with none, what stands between it and connecting. API keys may read it to learn whether a live submission will pass (`submissionsAllowed`). R151: with the identifier switch on, `einvoicingIdentifier`, `identifierSource` and `identifierNextAction` say which number the tax authority holds for the organisation, when asked with `?identifier=true`; `?fresh=true` asks the authority again past the gateway’s cache (limited per organisation).",
+      "description": "`tax_connection.read`. The organisation’s connection to the tax authority in the token’s mode — its state, the key, what must happen next — or, with none, what stands between it and connecting. API keys may read it to learn whether a live submission will pass (`submissionsAllowed`). Where identifier lookup is enabled, `einvoicingIdentifier`, `identifierSource` and `identifierNextAction` say which number the tax authority holds for the organisation, when asked with `?identifier=true`; `?fresh=true` asks the authority again past the gateway’s cache (limited per organisation).",
       "parameters": [
         {
           "name": "identifier",
           "required": false,
           "in": "query",
-          "description": "R151: resolve which number the tax authority holds for the organisation (a participant lookup). Without it, or `fresh`, I47 makes no lookup and the identifier fields are null. Ignored while the identifier switch is off or a live connection exists.",
+          "description": "Resolve which number the tax authority holds for the organisation (a participant lookup). Without it, or `fresh`, no lookup is made and the identifier fields are null. Ignored where this lookup is not enabled, or while a live connection exists.",
           "schema": {
             "enum": [
               "true",
@@ -9182,7 +9184,7 @@
           "name": "fresh",
           "required": false,
           "in": "query",
-          "description": "R151, the portal’s \"Check again\": ask the tax authority which number it holds, past the gateway’s cache. Implies `identifier`. Ignored while the identifier switch is off or a live connection exists.",
+          "description": "The portal’s \"Check again\": ask the tax authority which number it holds, past the gateway’s cache. Implies `identifier`. Ignored where this lookup is not enabled, or while a live connection exists.",
           "schema": {
             "enum": [
               "true",
@@ -13832,12 +13834,12 @@
         "amountDueMinor": {
           "type": "integer",
           "nullable": true,
-          "description": "What the checkout charges before VAT — the difference between the two prices pro-rated to the days left (R145), or the full new price; null for a period-end change."
+          "description": "What the checkout charges before VAT — the difference between the two prices pro-rated to the days left, or the full new price; null for a period-end change."
         },
         "daysLeft": {
           "type": "integer",
           "nullable": true,
-          "description": "R145: the whole days left in the period the change was priced on (a started day counts); null when the full price was charged, and for a period-end change."
+          "description": "The whole days left in the period the change was priced on (a started day counts); null when the full price was charged, and for a period-end change."
         },
         "periodDays": {
           "type": "integer",
@@ -13980,7 +13982,7 @@
         },
         "amountDueMinor": {
           "type": "integer",
-          "description": "What the checkout would charge before VAT (R145): the difference between the two prices pro-rated to the days left in the period — negative for a downgrade, which is available at period end only — or the full new price when nothing is pro-rated (`daysLeft` null)."
+          "description": "What the checkout would charge before VAT: the difference between the two prices pro-rated to the days left in the period — negative for a downgrade, which is available at period end only — or the full new price when nothing is pro-rated (`daysLeft` null)."
         },
         "daysLeft": {
           "type": "integer",
@@ -14292,7 +14294,7 @@
         },
         "unreachable": {
           "type": "boolean",
-          "description": "True when the bank account this row names was closed at the banking partner (the organisation’s payments account, docs/specs/payments.md §2.8): payouts cannot reach it until a new settlement account is registered."
+          "description": "True when the bank account this row names was closed at the banking partner (the organisation’s payments account): payouts cannot reach it until a new settlement account is registered."
         },
         "createdAt": {
           "type": "string",
@@ -15695,6 +15697,7 @@
           "type": "string",
           "enum": [
             "not_connected",
+            "awaiting_authority_listing",
             "pending_taxpayer_enablement",
             "pending_grant_approval",
             "pending_key",
@@ -15969,6 +15972,7 @@
           "type": "string",
           "enum": [
             "not_connected",
+            "awaiting_authority_listing",
             "pending_taxpayer_enablement",
             "pending_grant_approval",
             "pending_key",
@@ -16111,7 +16115,7 @@
           "type": "string",
           "nullable": true,
           "example": "2522523318294",
-          "description": "R151: the number the tax authority holds for the organisation on Yona’s access point — the live connection’s, else the first of the organisation’s numbers (its recorded TIN, then its verified tax id) the authority’s participant lookup finds. Null while the identifier switch is off, without a verified tax id, or when none resolved (`identifierNextAction` says why)."
+          "description": "The number the tax authority holds for the organisation on Yona’s access point — the live connection’s, else the first of the organisation’s numbers (its recorded TIN, then its verified tax id) the authority’s participant lookup finds. Null where identifier lookup is not enabled, without a verified tax id, or when none resolved (`identifierNextAction` says why)."
         },
         "identifierSource": {
           "type": "string",
@@ -16120,7 +16124,7 @@
             "tax_id"
           ],
           "nullable": true,
-          "description": "R151: where `einvoicingIdentifier` came from — `tin` (the e-invoicing TIN recorded beside the tax id) or `tax_id` (the verified tax id); null with no identifier."
+          "description": "Where `einvoicingIdentifier` came from — `tin` (the e-invoicing TIN recorded beside the tax id) or `tax_id` (the verified tax id); null with no identifier."
         },
         "identifierNextAction": {
           "type": "string",
@@ -16131,7 +16135,21 @@
             "retry"
           ],
           "nullable": true,
-          "description": "R151: why no number resolved — `add_tin` (no TIN recorded and the authority does not know the tax id), `enable_on_nrs` (the authority knows neither number), `choose_elyonar` (the authority lists the business with another access point provider), `retry` (the authority could not be asked). With no live connection it is also `nextAction.code`. Null when resolved, connected, or not computed; `?fresh=true` asks again."
+          "description": "Why no number resolved — `add_tin` (no TIN recorded and the authority does not know the tax id), `enable_on_nrs` (the authority knows neither number), `choose_elyonar` (the authority lists the business with another access point provider), `retry` (the authority could not be asked). With no live connection it is also `nextAction.code`. Null when resolved, connected, or not computed; `?fresh=true` asks again."
+        },
+        "connectWaits": {
+          "type": "boolean",
+          "description": "True when connecting now waits instead of being refused: `identifierNextAction` is `add_tin` or `enable_on_nrs` and this environment lets a business the tax authority does not list yet connect and wait (`state` becomes `awaiting_authority_listing`). False otherwise, including whenever `identifierNextAction` is null."
+        },
+        "listing": {
+          "nullable": true,
+          "description": "While `state` is `awaiting_authority_listing` (the tax authority lists the business under none of its numbers yet, so no grant is requested), when it started waiting and when the authority is asked again; null in every other state.",
+          "type": "object",
+          "allOf": [
+            {
+              "$ref": "#/components/schemas/invoice.ListingViewDto"
+            }
+          ]
         }
       },
       "required": [
@@ -16161,7 +16179,9 @@
         "legalNameMatches",
         "einvoicingIdentifier",
         "identifierSource",
-        "identifierNextAction"
+        "identifierNextAction",
+        "connectWaits",
+        "listing"
       ]
     },
     "invoice.CountryOptionDto": {
@@ -18286,7 +18306,7 @@
         },
         "issued": {
           "type": "integer",
-          "description": "Not drafts: `notReported + inProgress + reported + needsAttention`."
+          "description": "Not drafts: `notReported + inProgress + reported + needsAttention + held`."
         },
         "notReported": {
           "type": "integer"
@@ -18300,6 +18320,10 @@
         "needsAttention": {
           "type": "integer",
           "description": "Rejected or on hold, not cancelled."
+        },
+        "held": {
+          "type": "integer",
+          "description": "Issued while the connection to the tax authority was in progress; reported automatically once it completes."
         },
         "outstanding": {
           "description": "Per currency: what buyers still owe on issued invoices, net of credit notes.",
@@ -18324,6 +18348,7 @@
         "inProgress",
         "reported",
         "needsAttention",
+        "held",
         "outstanding",
         "overdue"
       ]
@@ -18534,9 +18559,10 @@
             "in_progress",
             "reported",
             "rejected",
-            "on_hold"
+            "on_hold",
+            "held"
           ],
-          "description": "How the document stands with the tax authority."
+          "description": "How the document stands with the tax authority. `held`: issued while the connection to the tax authority was in progress; it is reported automatically once the connection completes."
         },
         "delivery": {
           "type": "string",
@@ -18560,10 +18586,11 @@
             "buyer_off_network",
             "b2c_invalid_tin",
             "b2c",
-            "permission_withdrawn"
+            "permission_withdrawn",
+            "release_refused"
           ],
           "nullable": true,
-          "description": "Why the document is delivered the way it is, when that needs saying."
+          "description": "Why the document is delivered the way it is, when that needs saying. `release_refused`: issued while the connection to the tax authority was in progress, and it could not be reported automatically once connected; report it from the invoice."
         },
         "irn": {
           "type": "string",
@@ -18779,6 +18806,7 @@
         "state": {
           "type": "string",
           "enum": [
+            "awaiting_authority_listing",
             "pending_taxpayer_enablement",
             "pending_grant_approval",
             "pending_key",
@@ -19506,18 +19534,20 @@
           "type": "string",
           "enum": [
             "queued",
-            "not_reported"
+            "not_reported",
+            "held"
           ],
-          "description": "`queued`: being reported; `not_reported`: finalised and sent, not reported."
+          "description": "`queued`: being reported; `not_reported`: finalised and sent, not reported; `held`: finalised and sent, and reported to the tax authority automatically once the connection to it completes."
         },
         "notReportedReason": {
           "type": "string",
           "enum": [
             "not_connected",
-            "auto_report_off"
+            "auto_report_off",
+            "awaiting_connection"
           ],
           "nullable": true,
-          "description": "Why the invoice was not reported; null when it was queued."
+          "description": "Why the invoice was not reported; null when it was queued. `awaiting_connection`: the connection to the tax authority is in progress, and the invoice is reported once it completes."
         },
         "sentToBuyer": {
           "type": "boolean",
@@ -19725,6 +19755,45 @@
         "referenced",
         "createdAt",
         "updatedAt"
+      ]
+    },
+    "invoice.ListingViewDto": {
+      "type": "object",
+      "properties": {
+        "since": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the connection started waiting."
+        },
+        "checkedAt": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true,
+          "description": "When the tax authority was last asked."
+        },
+        "nextCheckAt": {
+          "type": "string",
+          "format": "date-time",
+          "nullable": true,
+          "description": "When it is asked again at the latest (every 6 hours); `?fresh=true` asks now."
+        },
+        "answer": {
+          "type": "string",
+          "enum": [
+            "unknown",
+            "elsewhere",
+            "unanswered",
+            "held_elsewhere"
+          ],
+          "nullable": true,
+          "description": "What the last check found: `unknown` (none of the numbers is listed), `elsewhere` (listed with another access point provider), `unanswered` (no answer; nothing changed), `held_elsewhere` (listed under a number another organisation on Yona holds; support looks)."
+        }
+      },
+      "required": [
+        "since",
+        "checkedAt",
+        "nextCheckAt",
+        "answer"
       ]
     },
     "invoice.MonthBucketDto": {
@@ -22492,7 +22561,7 @@
         },
         "stale": {
           "type": "boolean",
-          "description": "True when the figures are older than the refresh window and the bank could not be asked (LP36)."
+          "description": "True when the figures are older than the refresh window and the bank could not be asked."
         }
       },
       "required": [

@@ -3,6 +3,28 @@
 All notable changes to this project will be documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+In line with `@useyona/einvoice-js` 0.9.2: held invoices, and the tax connection waiting for the
+tax authority to list the business. No new methods; every change adds.
+
+### Added
+
+- Held invoices. While an organisation's connection to the tax authority is still in progress, an
+  invoice it issues is no longer refused: `Submissions.Issue` answers `Reporting` `held`
+  (`IssueAnswerDtoReportingHeld`) with `NotReportedReason` `awaiting_connection`, the invoice is
+  sent to the buyer, and Yona reports it automatically once the connection completes. Until then
+  the invoice's `Reporting.State` is `held`. `Invoices.List` and `Invoices.GetSummary` take
+  `Reporting` `held`, and the summary counts them in `Held`. `Reporting.Reason` `release_refused`
+  says one could not be reported when the connection completed: report it with `Submissions.Submit`.
+- The tax connection's `State` can be `awaiting_authority_listing`: the business asked to connect
+  and the tax authority does not list it yet. Yona asks again every 6 hours and connects it by
+  itself. `Listing` (`Since`, `CheckedAt`, `NextCheckAt`, `Answer`) says where that stands, nil in
+  every other state, and `ConnectWaits` says whether connecting now would wait this way. The same
+  state appears on `TaxConnection.ListForSubOrganizations` and in the invoice setup.
+- `einvoice.InvoiceFinalisedData`: the payload of `invoice.finalised`, which may carry `Reporting`
+  (`State`, `Reason`) so a webhook handler can tell a held invoice from one being reported.
+
 ## 0.2.1 (2026-11-11)
 
 In line with `@useyona/einvoice-js` 0.9.1 (the Yona API as of 11 Nov 2026): the 138 operations an

@@ -15,7 +15,10 @@ func (s *InvoicesService) Create(ctx context.Context, params *CreateInvoiceBody,
 	return out, err
 }
 
-// List lists invoices, newest first, without LineItems (`invoice.read`).
+// List lists invoices, newest first, without LineItems (`invoice.read`). A query with
+// `Reporting: einvoice.Ptr(einvoice.ListInvoicesQueryReportingHeld)` keeps the invoices issued while
+// the connection to the tax authority was in progress: each is reported automatically once it
+// completes (`Reporting.State` is `held` until then).
 func (s *InvoicesService) List(ctx context.Context, query *ListInvoicesQuery, opts ...RequestOption) (*Page[ListInvoicesItem], error) {
 	return page[ListInvoicesItem](ctx, &s.baseService, Call{Method: "GET", Path: "/i/v1/invoices", Query: query, Options: requestOptions(opts)})
 }
@@ -106,7 +109,8 @@ func (s *InvoicesService) GetStatistics(ctx context.Context, query *GetInvoiceSt
 	return out, err
 }
 
-// GetSummary is the counts behind the invoice list's summary cards (`invoice.stats.read`).
+// GetSummary is the counts behind the invoice list's summary cards (`invoice.stats.read`); `Held`
+// counts the invoices waiting for the connection to the tax authority.
 func (s *InvoicesService) GetSummary(ctx context.Context, query *GetInvoiceListSummaryQuery, opts ...RequestOption) (*GetInvoiceListSummaryData, error) {
 	out := &GetInvoiceListSummaryData{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/i/v1/invoices/summary", Query: query, Options: requestOptions(opts)}, out)
@@ -126,7 +130,10 @@ func (s *SubmissionsService) Submit(ctx context.Context, id string, query *Submi
 }
 
 // Issue issues a draft: finalised and submitted when the organisation reports automatically (202),
-// otherwise finalised and sent to the buyer (200, `NotReportedReason`). Sends an `Idempotency-Key`.
+// otherwise finalised and sent to the buyer (200, `NotReportedReason`). While the organisation's
+// connection to the tax authority is still in progress the answer can be `Reporting: "held"`
+// (`NotReportedReason: "awaiting_connection"`): the invoice is issued and sent now, and reported
+// automatically once the connection completes. Sends an `Idempotency-Key`.
 func (s *SubmissionsService) Issue(ctx context.Context, id string, opts ...RequestOption) (*IssueInvoiceData, error) {
 	out := &IssueInvoiceData{}
 	err := s.call(ctx, Call{Method: "POST", Path: "/i/v1/invoices/" + seg(id) + "/issue", Idempotent: true, Options: requestOptions(opts)}, out)
