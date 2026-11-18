@@ -5,7 +5,7 @@ import "context"
 // BillingAccountsService is billing accounts (`/b/v1/billing-accounts`): the credit balance.
 type BillingAccountsService struct{ baseService }
 
-// GetMine is the organisation's billing account; an API key sees its own mode's balance (`billing.account.read`).
+// GetMine is the organization's billing account; an API key sees its own mode's balance (`billing.account.read`).
 func (s *BillingAccountsService) GetMine(ctx context.Context, query *GetBillingAccountQuery, opts ...RequestOption) (*GetBillingAccountData, error) {
 	out := &GetBillingAccountData{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/billing-accounts/me", Query: query, Options: requestOptions(opts)}, out)
@@ -104,14 +104,14 @@ func (s *SubscriptionsService) PreviewPlanChange(ctx context.Context, id string,
 	return out, err
 }
 
-// GetDealOffer is the deal offered to the organisation; nil when there is none (`billing.subscription.read`).
+// GetDealOffer is the deal offered to the organization; nil when there is none (`billing.subscription.read`).
 func (s *SubscriptionsService) GetDealOffer(ctx context.Context, opts ...RequestOption) (*GetDealOfferData, error) {
 	var out *GetDealOfferData
 	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/deals/offer", Options: requestOptions(opts)}, &out)
 	return out, err
 }
 
-// QuoteSubOrgSlot is what one more sub-organisation slot would cost; writes nothing (`billing.subscription.read`).
+// QuoteSubOrgSlot is what one more sub-organization slot would cost; writes nothing (`billing.subscription.read`).
 func (s *SubscriptionsService) QuoteSubOrgSlot(ctx context.Context, opts ...RequestOption) (*GetSubOrgSlotQuoteData, error) {
 	out := &GetSubOrgSlotQuoteData{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/sub-org-slots/quote", Options: requestOptions(opts)}, out)
@@ -122,7 +122,7 @@ func (s *SubscriptionsService) QuoteSubOrgSlot(ctx context.Context, opts ...Requ
 type UsageService struct{ baseService }
 
 // GetInvoices is this month's invoice usage, the allowance and its thresholds; nil when the
-// organisation has none (`billing.subscription.read`).
+// organization has none (`billing.subscription.read`).
 func (s *UsageService) GetInvoices(ctx context.Context, opts ...RequestOption) (*GetInvoiceUsageData, error) {
 	var out *GetInvoiceUsageData
 	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/usage/invoices/current", Options: requestOptions(opts)}, &out)
@@ -139,7 +139,7 @@ func (s *UsageService) QuoteOverage(ctx context.Context, opts ...RequestOption) 
 // PlansService is the plan catalogue (`/b/v1/plans`).
 type PlansService struct{ baseService }
 
-// GetRecommendation is the plan recommended for the organisation from its usage; nil when there is
+// GetRecommendation is the plan recommended for the organization from its usage; nil when there is
 // none (`billing.subscription.read`).
 func (s *PlansService) GetRecommendation(ctx context.Context, opts ...RequestOption) (*GetPlanRecommendationData, error) {
 	var out *GetPlanRecommendationData
@@ -169,7 +169,7 @@ func (s *PartnerService) GetWithQuery(ctx context.Context, query *GetPartnerQuer
 	return out, err
 }
 
-// GetOffer is the partner tier the organisation may buy; nil when there is none (`billing.subscription.read`).
+// GetOffer is the partner tier the organization may buy; nil when there is none (`billing.subscription.read`).
 func (s *PartnerService) GetOffer(ctx context.Context, opts ...RequestOption) (*GetPartnerOfferData, error) {
 	var out *GetPartnerOfferData
 	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/partner/offer", Options: requestOptions(opts)}, &out)

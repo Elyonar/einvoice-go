@@ -8,7 +8,7 @@ import "context"
 // is the key's own mode; where collections are not switched on for it, 409 `BIZ120`.
 type CollectionsService struct{ baseService }
 
-// ListAccounts is the organisation's collection accounts, newest first (`collection.account.read`).
+// ListAccounts is the organization's collection accounts, newest first (`collection.account.read`).
 func (s *CollectionsService) ListAccounts(ctx context.Context, query *ListCollectionAccountsQuery, opts ...RequestOption) (*Page[ListCollectionAccountsItem], error) {
 	return page[ListCollectionAccountsItem](ctx, &s.baseService, Call{Method: "GET", Path: "/b/v1/collection/accounts", Query: query, Options: requestOptions(opts)})
 }
@@ -51,7 +51,7 @@ func (s *CollectionsService) QuoteFee(ctx context.Context, query *QuoteCollectio
 	return out, err
 }
 
-// ListPayments is the organisation's collection payments, newest first (`collection.payment.read`).
+// ListPayments is the organization's collection payments, newest first (`collection.payment.read`).
 func (s *CollectionsService) ListPayments(ctx context.Context, query *ListCollectionPaymentsQuery, opts ...RequestOption) (*Page[ListCollectionPaymentsItem], error) {
 	return page[ListCollectionPaymentsItem](ctx, &s.baseService, Call{Method: "GET", Path: "/b/v1/collection/payments", Query: query, Options: requestOptions(opts)})
 }
@@ -82,7 +82,7 @@ func (s *CollectionsService) ListSettlementAccounts(ctx context.Context, query *
 	return page[ListCollectionSettlementAccountsItem](ctx, &s.baseService, Call{Method: "GET", Path: "/b/v1/collection/settlement-accounts", Query: query, Options: requestOptions(opts)})
 }
 
-// GetSettlementAccount is the active settlement account, by the organisation's seller id
+// GetSettlementAccount is the active settlement account, by the organization's seller id
 // (`collection.settlement_account.read`).
 func (s *CollectionsService) GetSettlementAccount(ctx context.Context, sellerID string, opts ...RequestOption) (*GetCollectionSettlementAccountData, error) {
 	out := &GetCollectionSettlementAccountData{}

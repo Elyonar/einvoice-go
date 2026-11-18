@@ -2,7 +2,7 @@ package einvoice
 
 import "context"
 
-// BuyersService is buyers (`/i/v1/buyers`): the parties the organisation invoices.
+// BuyersService is buyers (`/i/v1/buyers`): the parties the organization invoices.
 type BuyersService struct{ baseService }
 
 // Create creates a buyer (`buyer.create`; charged per buyer).
@@ -83,11 +83,11 @@ func (s *BuyersService) CheckWithTaxAuthority(ctx context.Context, params *Check
 	return out, err
 }
 
-// SellersService is sellers (`/i/v1/sellers`): read-only. The organisation is its only seller;
+// SellersService is sellers (`/i/v1/sellers`): read-only. The organization is its only seller;
 // creating, editing, deleting or verifying a seller is always 409 `BIZ205`, so the SDK has no method for it.
 type SellersService struct{ baseService }
 
-// List is the organisation's seller, as a list of one (`seller.read`).
+// List is the organization's seller, as a list of one (`seller.read`).
 func (s *SellersService) List(ctx context.Context, query *ListSellersQuery, opts ...RequestOption) (*Page[ListSellersItem], error) {
 	return page[ListSellersItem](ctx, &s.baseService, Call{Method: "GET", Path: "/i/v1/sellers", Query: query, Options: requestOptions(opts)})
 }
@@ -99,7 +99,7 @@ func (s *SellersService) Get(ctx context.Context, id string, opts ...RequestOpti
 	return out, err
 }
 
-// GetVerificationStatus is the organisation's TIN status (`seller.read`).
+// GetVerificationStatus is the organization's TIN status (`seller.read`).
 func (s *SellersService) GetVerificationStatus(ctx context.Context, id string, opts ...RequestOption) (*GetSellerVerificationStatusData, error) {
 	out := &GetSellerVerificationStatusData{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/i/v1/sellers/" + seg(id) + "/verification-status", Options: requestOptions(opts)}, out)

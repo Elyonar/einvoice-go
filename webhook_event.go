@@ -151,7 +151,7 @@ type WebhookEvent struct {
 	CreatedAt string `json:"createdAt"`
 	// Mode is `sandbox` or `live`.
 	Mode Mode `json:"mode"`
-	// OrganizationID is the organisation the event is about.
+	// OrganizationID is the organization the event is about.
 	OrganizationID string `json:"organizationId"`
 	// Data is the type's payload, still as JSON.
 	Data json.RawMessage `json:"data"`
@@ -174,10 +174,10 @@ func (e *WebhookEvent) DataMap() map[string]any {
 }
 
 // OrganizationChildCreatedData is the Data of `organization.child.created`, sent to the parent when
-// a sub-organisation is created (decode it with DecodeData). Ids only: read its name and status
+// a sub-organization is created (decode it with DecodeData). Ids only: read its name and status
 // with Organization.ListSubOrganizations and IDs.
 type OrganizationChildCreatedData struct {
-	// ChildOrganizationID is the new sub-organisation.
+	// ChildOrganizationID is the new sub-organization.
 	ChildOrganizationID string `json:"childOrganizationId"`
 	// ActorUserID is the person it is recorded under: who created it, or the parent's Owner when an
 	// API key did.

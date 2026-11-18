@@ -2,8 +2,8 @@
 // @useyona/einvoice-js module for module. It covers exactly what an API key may call: invoicing,
 // submissions to the tax authority, output and share links, items, reference data, buyers, the
 // read-only seller, received invoices and issued history, invoice settings, the tax connection, the
-// organisation (read), its sub-organisations (list, readiness, create), billing reads, collections
-// and webhooks (read, test, redeliver). Users, invitations, roles, API keys, organisation
+// organization (read), its sub-organizations (list, readiness, create), billing reads, collections
+// and webhooks (read, test, redeliver). Users, invitations, roles, API keys, organization
 // management, purchases and webhook-endpoint writes are done by a signed-in user in the dashboard
 // and are not in the SDK.
 //

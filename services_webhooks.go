@@ -6,7 +6,7 @@ import "context"
 // test them; creating, changing, deleting and rotating an endpoint's secret are done in the dashboard.
 type WebhookEndpointsService struct{ baseService }
 
-// List is the endpoints of the key's organisation and mode; never a secret (`webhook.endpoint.read`).
+// List is the endpoints of the key's organization and mode; never a secret (`webhook.endpoint.read`).
 func (s *WebhookEndpointsService) List(ctx context.Context, opts ...RequestOption) ([]ListWebhookEndpointsItem, error) {
 	out := []ListWebhookEndpointsItem{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/n/v1/webhook-endpoints", Options: requestOptions(opts)}, &out)
@@ -57,7 +57,7 @@ func (s *WebhookDeliveriesService) Redeliver(ctx context.Context, id string, opt
 // WebhookEventsService is logged webhook events (`/n/v1/webhook-events`, last 30 days).
 type WebhookEventsService struct{ baseService }
 
-// List lists events of the key's mode plus organisation-scoped ones (`webhook.delivery.read`).
+// List lists events of the key's mode plus organization-scoped ones (`webhook.delivery.read`).
 func (s *WebhookEventsService) List(ctx context.Context, query *ListWebhookEventsQuery, opts ...RequestOption) (*Page[ListWebhookEventsItem], error) {
 	return page[ListWebhookEventsItem](ctx, &s.baseService, Call{Method: "GET", Path: "/n/v1/webhook-events", Query: query, Options: requestOptions(opts)})
 }

@@ -172,9 +172,9 @@ Some codes to branch on:
 | Status | `ErrorCode` | When |
 |---|---|---|
 | 400 | `VAL202`, `VAL203` | a buyer's address: a state that is not on the list (`VAL202`); an LGA that is not on the list, or of another state (`VAL203`) |
-| 402 | `BIZ016` | `Organization.CreateSubOrganization`: the plan allows no more organisations |
+| 402 | `BIZ016` | `Organization.CreateSubOrganization`: the plan allows no more organizations |
 | 403 | `AUTH019` | the key does not hold the capability the route needs |
-| 403 | `BIZ003` | a sandbox key creating a sub-organisation |
+| 403 | `BIZ003` | a sandbox key creating a sub-organization |
 
 ## Retries and idempotency
 
@@ -219,7 +219,7 @@ list and test them and inspect deliveries.
 
 [`examples/`](examples/) holds seven complete, runnable walkthroughs: your first invoice, webhooks,
 errors and retries, sandbox and live, received invoices, states and LGAs (the two lists, an LGA
-picker filtered by state, a buyer saved with the codes, `VAL202` and `VAL203`) and sub-organisations
+picker filtered by state, a buyer saved with the codes, `VAL202` and `VAL203`) and sub-organizations
 (listing them with a key, their readiness for live and their tax connections, creating one with a
 live key). Run them against your sandbox key with `YONA_API_KEY=sk_test_… make examples`.
 
@@ -262,11 +262,11 @@ methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
 | package `einvoice` | `VerifyWebhook`, `SignWebhookPayload`, `ComputeWebhookSignature`, `ParseSignatureHeader`, `Paginate`, `Collect`, `CodeListItems` |
 
 - `TaxConnection.GetWithQuery(ctx, &einvoice.GetTaxConnectionQuery{Identifier: einvoice.Ptr(einvoice.GetTaxConnectionQueryIdentifierTrue)})`
-  also says which number the tax authority holds for the organisation, its TIN or its 13-digit Tax
+  also says which number the tax authority holds for the organization, its TIN or its 13-digit Tax
   ID (`EinvoicingIdentifier`, or `IdentifierNextAction` when it holds none); `Fresh` asks again.
   Both are rationed. `Get(ctx, ...RequestOption)` is unchanged and makes no lookup (einvoice-js
   overloads `taxConnection.get`; Go adds a method instead).
-- Held invoices: while an organisation's connection to the tax authority is still in progress, an
+- Held invoices: while an organization's connection to the tax authority is still in progress, an
   invoice it issues is not refused. `Submissions.Issue` answers `Reporting: "held"` with
   `NotReportedReason: "awaiting_connection"`, the invoice is sent to the buyer, and Yona reports it
   automatically once the connection completes. Until then the invoice's `Reporting.State` is
@@ -292,31 +292,31 @@ methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
   those lists: the code, or the exact name, which is stored as the code. A value that is not on the
   list is refused with 400 `VAL202` (state) or `VAL203` (LGA, also when it belongs to another
   state). Both are optional, and free text for other countries.
-- Sub-organisations: an organisation that runs several businesses holds them as sub-organisations.
+- Sub-organizations: an organization that runs several businesses holds them as sub-organizations.
   No key preset includes `organization.children.read` or `organization.children.create`: an Owner
-  or Admin adds them to a key by name, under Sub-organisations in the dashboard's Create API Key
+  or Admin adds them to a key by name, under Sub-organizations in the dashboard's Create API Key
   dialog.
   - `Organization.ListSubOrganizations(ctx, &einvoice.ListSubOrganizationsQuery{Page, Limit, Search, IDs})`
     (`GET /a/v1/organizations/me/children`) answers a page, newest first, with the total in
     `Pagination`; 100 a page at most. `IDs` (a list, at most 100) keeps only the ones named. It
     works in sandbox and live, and with `Paginate`.
   - `Organization.ListSubOrganizationsReadiness` (`GET /a/v1/organizations/me/children/readiness`)
-    answers the same page with each sub-organisation's checklist, `LiveStatus` and `NextStep`.
+    answers the same page with each sub-organization's checklist, `LiveStatus` and `NextStep`.
   - `Organization.CreateSubOrganization(ctx, &einvoice.CreateSubOrganizationBody{BusinessName, Email, PhoneNumber, Website})`
     (`POST /a/v1/organizations`) needs a live key (a sandbox key is refused with 403 `BIZ003`). The
-    new organisation is recorded under the parent's longest-standing Owner and is
+    new organization is recorded under the parent's longest-standing Owner and is
     `pending_verification` until it completes its own onboarding. No `Idempotency-Key` is sent and
     the SDK does not retry it: a name is unique under its parent, so a repeat answers 409 `RES002`.
-    402 `BIZ016` when the plan allows no more organisations; 60 calls a minute for each key.
+    402 `BIZ016` when the plan allows no more organizations; 60 calls a minute for each key.
   - `TaxConnection.ListForSubOrganizations(ctx, &einvoice.SubOrganizationTaxConnectionsQuery{IDs: ids})`
-    (`GET /i/v1/tax-connection/children?ids=`, `tax_connection.read`) is for a parent organisation:
-    the state of each named sub-organisation's connection in the key's mode, and whether a
-    submission would pass. At most 100 ids, each once. An id that is not one of the organisation's
-    sub-organisations is left out of the answer.
+    (`GET /i/v1/tax-connection/children?ids=`, `tax_connection.read`) is for a parent organization:
+    the state of each named sub-organization's connection in the key's mode, and whether a
+    submission would pass. At most 100 ids, each once. An id that is not one of the organization's
+    sub-organizations is left out of the answer.
   - `IDs` is an `einvoice.IDs`, a `[]string`: `IDs: []string{"a", "b"}`. It is sent as one
     comma-separated value (`ids=a,b`), as the API reads it, never as a repeated key.
   - The parent's `organization.child.created` webhook carries `keyId` when a key created the
-    sub-organisation: decode it into `einvoice.OrganizationChildCreatedData`.
+    sub-organization: decode it into `einvoice.OrganizationChildCreatedData`.
 - `Billing.Partner.GetWithQuery(ctx, &einvoice.GetPartnerQuery{Page: einvoice.Ptr(int64(2)), Limit: einvoice.Ptr(int64(50))})`
   (`GET /b/v1/partner?page=&limit=`) reads another page of the businesses the partner pays for;
   the answer's `BusinessesPage` says which page and how many there are in all. `Get(ctx,
@@ -331,9 +331,9 @@ methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
   in `ExcludedOperations`.
 
 Account management (users, roles, API keys, purchases, webhook endpoint settings) is done in the
-Yona dashboard, not through the API key. So is managing a sub-organisation (its profile, members,
-onboarding, tax connection): in the dashboard, signed in to that sub-organisation. A key lists
-sub-organisations and creates one.
+Yona dashboard, not through the API key. So is managing a sub-organization (its profile, members,
+onboarding, tax connection): in the dashboard, signed in to that sub-organization. A key lists
+sub-organizations and creates one.
 
 ## Configuration
 

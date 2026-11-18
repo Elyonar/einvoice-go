@@ -1,5 +1,5 @@
-// @recipe sub-organisations Sub-organisations
-// @summary For an organisation that runs several businesses: list its sub-organisations with an API key, see which are ready for live and connected to the tax authority, and create one with a live key.
+// @recipe sub-organizations Sub-organizations
+// @summary For an organization that runs several businesses: list its sub-organizations with an API key, see which are ready for live and connected to the tax authority, and create one with a live key.
 package main
 
 import (
@@ -16,38 +16,38 @@ func main() {
 	ctx := context.Background()
 
 	// @step client Create the client
-	// @text Use a key of the parent organisation. No key preset includes the two sub-organisation permissions: an Owner or Admin ticks them under Sub-organisations when creating the key in the dashboard. Listing works in sandbox and live; creating needs a live key.
+	// @text Use a key of the parent organization. No key preset includes the two sub-organization permissions: an Owner or Admin ticks them under Sub-organizations when creating the key in the dashboard. Listing works in sandbox and live; creating needs a live key.
 	yona, err := einvoice.New(os.Getenv("YONA_API_KEY"))
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// @step list List the sub-organisations
+	// @step list List the sub-organizations
 	// @text Newest first, 100 a page at most, with the total in Pagination. Search keeps the ones whose name holds the text. The permission is organization.children.read.
 	// @op listChildOrganizations
 	firstPage, err := yona.Organization.ListSubOrganizations(ctx, &einvoice.ListSubOrganizationsQuery{Limit: einvoice.Ptr(100.0)})
 	if err != nil {
-		// 403 AUTH019: the key does not hold organization.children.read. 404 RES001: sub-organisations are
-		// not switched on here. 409 BIZ014: this organisation is itself a sub-organisation.
+		// 403 AUTH019: the key does not hold organization.children.read. 404 RES001: sub-organizations are
+		// not switched on here. 409 BIZ014: this organization is itself a sub-organization.
 		var permission *einvoice.PermissionError
 		var notFound *einvoice.NotFoundError
 		var conflict *einvoice.ConflictError
 		switch {
 		case errors.As(err, &permission) && permission.ErrorCode == "AUTH019":
-			fmt.Println("this key cannot list sub-organisations:", permission.ErrorCode)
+			fmt.Println("this key cannot list sub-organizations:", permission.ErrorCode)
 		case errors.As(err, &notFound) && notFound.ErrorCode == "RES001":
-			fmt.Println("this key cannot list sub-organisations:", notFound.ErrorCode)
+			fmt.Println("this key cannot list sub-organizations:", notFound.ErrorCode)
 		case errors.As(err, &conflict) && conflict.ErrorCode == "BIZ014":
-			fmt.Println("this key cannot list sub-organisations:", conflict.ErrorCode)
+			fmt.Println("this key cannot list sub-organizations:", conflict.ErrorCode)
 		default:
 			log.Fatal(err)
 		}
 		return
 	}
-	fmt.Println(firstPage.Pagination.Total, "sub-organisations")
+	fmt.Println(firstPage.Pagination.Total, "sub-organizations")
 
 	// @step paginate Walk every page
-	// @text An organisation can hold many sub-organisations. Paginate fetches page after page for you.
+	// @text An organization can hold many sub-organizations. Paginate fetches page after page for you.
 	// @op listChildOrganizations
 	var all []einvoice.ListChildOrganizationsItem
 	enough := errors.New("enough")
@@ -68,7 +68,7 @@ func main() {
 	fmt.Println("read", len(all))
 
 	// @step readiness See which are ready for live
-	// @text The same page, with each sub-organisation's checklist, live status and next step. IDs keeps only the ones you name (100 at most), given as a list.
+	// @text The same page, with each sub-organization's checklist, live status and next step. IDs keeps only the ones you name (100 at most), given as a list.
 	// @op listChildOrganizationsReadiness
 	var ids []string
 	for _, sub := range firstPage.Data {
@@ -87,7 +87,7 @@ func main() {
 	}
 
 	// @step tax-connection Check their tax connections
-	// @text One item for each sub-organisation named: the state of its connection to the tax authority in the key's mode, and whether a submission would pass. The permission is tax_connection.read. An id that is not one of your sub-organisations is left out.
+	// @text One item for each sub-organization named: the state of its connection to the tax authority in the key's mode, and whether a submission would pass. The permission is tax_connection.read. An id that is not one of your sub-organizations is left out.
 	// @op listChildTaxConnections
 	if len(ids) > 0 {
 		connections, err := yona.TaxConnection.ListForSubOrganizations(ctx, &einvoice.SubOrganizationTaxConnectionsQuery{IDs: ids})
@@ -99,8 +99,8 @@ func main() {
 		}
 	}
 
-	// @step create Create a sub-organisation
-	// @text With a live key that holds organization.children.create, this answers the new organisation; its Status is pending_verification until it completes its own onboarding. A name is unique under its parent, so a repeat answers 409 RES002 and nothing is created twice. A sandbox key is refused, which is what this step shows in sandbox; with a live key it creates nothing here.
+	// @step create Create a sub-organization
+	// @text With a live key that holds organization.children.create, this answers the new organization; its Status is pending_verification until it completes its own onboarding. A name is unique under its parent, so a repeat answers 409 RES002 and nothing is created twice. A sandbox key is refused, which is what this step shows in sandbox; with a live key it creates nothing here.
 	// @op createOrganization
 	if yona.Mode() == einvoice.ModeSandbox {
 		created, err := yona.Organization.CreateSubOrganization(ctx, &einvoice.CreateSubOrganizationBody{BusinessName: "Acme Retail Ltd", Email: "accounts@acme.example"})

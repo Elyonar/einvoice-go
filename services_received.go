@@ -3,7 +3,7 @@ package einvoice
 import "context"
 
 // InboundInvoicesService is received invoices (`/i/v1/inbound-invoices`): what other businesses
-// issued to the organisation.
+// issued to the organization.
 type InboundInvoicesService struct{ baseService }
 
 // List lists received invoices (`invoice.inbound.read`; free). `Tier: "history"` lists those
@@ -48,7 +48,7 @@ func (s *InboundInvoicesService) LoadOlder(ctx context.Context, opts ...RequestO
 	return out, err
 }
 
-// IssuedHistoryService is issued history (`/i/v1/issued-history`): invoices the organisation issued
+// IssuedHistoryService is issued history (`/i/v1/issued-history`): invoices the organization issued
 // that NRS holds, from before Yona.
 type IssuedHistoryService struct{ baseService }
 

@@ -3,7 +3,7 @@ package einvoice
 import "context"
 
 // InvoicesService is invoices (`/i/v1/invoices`): drafts, their lifecycle, credit and debit notes,
-// and the organisation's invoice statistics. Submission to the tax authority is SubmissionsService.
+// and the organization's invoice statistics. Submission to the tax authority is SubmissionsService.
 type InvoicesService struct{ baseService }
 
 // Create creates a draft invoice (`invoice.create`; charged as one invoice creation). The number is
@@ -129,8 +129,8 @@ func (s *SubmissionsService) Submit(ctx context.Context, id string, query *Submi
 	return out, err
 }
 
-// Issue issues a draft: finalised and submitted when the organisation reports automatically (202),
-// otherwise finalised and sent to the buyer (200, `NotReportedReason`). While the organisation's
+// Issue issues a draft: finalised and submitted when the organization reports automatically (202),
+// otherwise finalised and sent to the buyer (200, `NotReportedReason`). While the organization's
 // connection to the tax authority is still in progress the answer can be `Reporting: "held"`
 // (`NotReportedReason: "awaiting_connection"`): the invoice is issued and sent now, and reported
 // automatically once the connection completes. Sends an `Idempotency-Key`.

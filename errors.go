@@ -72,7 +72,7 @@ type InsufficientCreditsError struct{ *APIError }
 // key (`AUTH018`), or a business rule forbids it.
 type PermissionError struct{ *APIError }
 
-// NotFoundError is 404: the resource does not exist or is not this organisation's (`RES001`).
+// NotFoundError is 404: the resource does not exist or is not this organization's (`RES001`).
 type NotFoundError struct{ *APIError }
 
 // ConflictError is 409: the resource's state does not allow it (e.g. `BIZ004`, `BIZ201`, `BIZ205`).

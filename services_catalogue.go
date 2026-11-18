@@ -57,7 +57,7 @@ func (s *ItemsService) Unarchive(ctx context.Context, id string, opts ...Request
 }
 
 // ListUsedCodes is the HS (`Type: "goods"`) or service (`Type: "service"`) codes already used on the
-// organisation's invoices (`item.read`).
+// organization's invoices (`item.read`).
 func (s *ItemsService) ListUsedCodes(ctx context.Context, query *ListUsedItemCodesQuery, opts ...RequestOption) ([]ListUsedItemCodesItem, error) {
 	out := []ListUsedItemCodesItem{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/i/v1/invoices/codes/used", Query: query, Options: requestOptions(opts)}, &out)

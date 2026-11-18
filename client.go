@@ -2,7 +2,7 @@ package einvoice
 
 // Client is the client of the Yona e-invoicing API (the EInvoice client of the other SDKs). It
 // covers what an API key may call: invoicing, buyers, items, received invoices, billing reads and
-// webhooks. Users, invitations, roles, API keys and organisation management are done in the dashboard.
+// webhooks. Users, invitations, roles, API keys and organization management are done in the dashboard.
 //
 // The key decides the mode: `sk_test_…` is sandbox and `sk_live_…` is live, on the same host.
 //
@@ -27,17 +27,17 @@ type Client struct {
 	Reference *ReferenceService
 	// Buyers.
 	Buyers *BuyersService
-	// Sellers: the organisation's seller (read-only).
+	// Sellers: the organization's seller (read-only).
 	Sellers *SellersService
-	// InboundInvoices: invoices other businesses issued to the organisation.
+	// InboundInvoices: invoices other businesses issued to the organization.
 	InboundInvoices *InboundInvoicesService
-	// IssuedHistory: invoices the organisation issued outside Yona that the tax authority holds.
+	// IssuedHistory: invoices the organization issued outside Yona that the tax authority holds.
 	IssuedHistory *IssuedHistoryService
 	// InvoiceSettings (read-only).
 	InvoiceSettings *InvoiceSettingsService
 	// TaxConnection: the connection to the tax authority (read-only).
 	TaxConnection *TaxConnectionService
-	// Organization: the key's organisation (read-only).
+	// Organization: the key's organization (read-only).
 	Organization *OrganizationService
 	// Billing reads: account, ledger, statements, subscriptions, payments, sandbox allowance, invoice
 	// usage, plans, partner.
