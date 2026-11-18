@@ -113,7 +113,7 @@ func main() {
 	_ = server.Shutdown(ctx)
 
 	// @step list-endpoints List your endpoints
-	// @text The key reads the endpoints registered for its organisation and mode.
+	// @text The key reads the endpoints registered for its organization and mode.
 	// @op listWebhookEndpoints
 	yona, err := einvoice.New(os.Getenv("YONA_API_KEY"))
 	if err != nil {

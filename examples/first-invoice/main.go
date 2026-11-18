@@ -30,7 +30,7 @@ func main() {
 	ref := hex.EncodeToString(refBytes)
 
 	// @step create-buyer Create a buyer
-	// @text A buyer is the party you invoice. A B2B buyer carries its tax id (TIN), which the tax authority checks on submission. A buyer can never carry your own organisation's TIN (the authority refuses SAME_PARTY_TIN); the sandbox accepts any well-formed TIN. A TIN is unique per organisation: on 409 RES002, reuse the buyer you already have.
+	// @text A buyer is the party you invoice. A B2B buyer carries its tax id (TIN), which the tax authority checks on submission. A buyer can never carry your own organization's TIN (the authority refuses SAME_PARTY_TIN); the sandbox accepts any well-formed TIN. A TIN is unique per organization: on 409 RES002, reuse the buyer you already have.
 	// @op createBuyer
 	taxID := "12345678-0001"
 	buyer, err := yona.Buyers.Create(ctx, &einvoice.CreateBuyerBody{

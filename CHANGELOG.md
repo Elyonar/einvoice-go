@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+"Organization" is spelt with a z everywhere, the API's own values included (ruling R230, 18 Nov 2026).
+This is a breaking change for code that names or compares the two values below.
+
+### Changed
+
+- **Breaking.** Two values the API answers change: an invoice's and a submission's `IssuedAs.Kind`
+  (`InvoiceIssuedAsDtoKind`), and the tax connection's `IssuesAs` (`ConnectionViewDtoIssuesAs`), answer
+  `organization` where they answered `organisation`. The constants follow the value:
+  `InvoiceIssuedAsDtoKindOrganisation` and `ConnectionViewDtoIssuesAsOrganisation` become
+  `InvoiceIssuedAsDtoKindOrganization` and `ConnectionViewDtoIssuesAsOrganization`, so code that names
+  the old constants no longer compiles. Earlier versions decode the new value as it is (the fields are
+  string types, never validated), so a comparison with the old constant there is false.
+- The recipe `sub-organisations` is now `sub-organizations`: the example `examples/sub-organizations`,
+  and its id and title in `guides/guides.json`.
+- Every doc comment, guide text, test name and README line spells the word with a z. No method,
+  parameter, field, route, permission, event name, webhook type or error code changes: they already
+  used the z.
+
+### Added
+
+- `spelling_test.go` fails when the s spelling of the word comes back, outside the files generated from
+  the API document and the history in this file.
+
 ## 0.2.2 (2026-11-12)
 
 In line with `@useyona/einvoice-js` 0.9.2: held invoices, and the tax connection waiting for the

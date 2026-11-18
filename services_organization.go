@@ -3,7 +3,7 @@ package einvoice
 import "context"
 
 // ListSubOrganizationsQuery is the query of Organization.ListSubOrganizations: a page, a name
-// search, or the sub-organisations named in IDs. It is the API's ListChildOrganizationsQuery with
+// search, or the sub-organizations named in IDs. It is the API's ListChildOrganizationsQuery with
 // `ids` as a list.
 type ListSubOrganizationsQuery struct {
 	Page *float64 `json:"page,omitempty"`
@@ -11,11 +11,11 @@ type ListSubOrganizationsQuery struct {
 	// Limit is the page size: 100 at most, and 100 when left out.
 	Limit *float64 `json:"limit,omitempty"`
 
-	// Search keeps the sub-organisations whose name holds it.
+	// Search keeps the sub-organizations whose name holds it.
 	Search *string `json:"search,omitempty"`
 
-	// IDs keeps only these sub-organisations: at most 100. An id that is not one of the
-	// organisation's sub-organisations is left out of the answer.
+	// IDs keeps only these sub-organizations: at most 100. An id that is not one of the
+	// organization's sub-organizations is left out of the answer.
 	IDs IDs `json:"ids,omitempty"`
 }
 
@@ -27,21 +27,21 @@ type ListSubOrganizationsReadinessQuery struct {
 	// Limit is the page size: 100 at most, and 100 when left out.
 	Limit *float64 `json:"limit,omitempty"`
 
-	// Search keeps the sub-organisations whose name holds it.
+	// Search keeps the sub-organizations whose name holds it.
 	Search *string `json:"search,omitempty"`
 
-	// IDs keeps only these sub-organisations: at most 100.
+	// IDs keeps only these sub-organizations: at most 100.
 	IDs IDs `json:"ids,omitempty"`
 }
 
 // CreateSubOrganizationBody is the body of Organization.CreateSubOrganization: the API's
-// CreateOrganizationBody without `country`, which a sub-organisation takes from its parent.
+// CreateOrganizationBody without `country`, which a sub-organization takes from its parent.
 // (einvoice-js names it CreateSubOrganizationParams.)
 type CreateSubOrganizationBody struct {
-	// BusinessName is the new organisation's name, unique under its parent.
+	// BusinessName is the new organization's name, unique under its parent.
 	BusinessName string `json:"businessName"`
 
-	// Email becomes the organisation's contact email (lower-cased).
+	// Email becomes the organization's contact email (lower-cased).
 	Email string `json:"email"`
 
 	// PhoneNumber is E.164; spaces, dashes, dots and brackets are removed before validation.
@@ -53,15 +53,15 @@ type CreateSubOrganizationBody struct {
 // SubOrganizationTaxConnectionsQuery is the query of TaxConnection.ListForSubOrganizations: the
 // API's ListChildTaxConnectionsQuery with `ids` as a list.
 type SubOrganizationTaxConnectionsQuery struct {
-	// IDs are the sub-organisations: at most 100, each once.
+	// IDs are the sub-organizations: at most 100, each once.
 	IDs IDs `json:"ids"`
 }
 
-// OrganizationService is the key's organisation (`/a/v1/organizations`): its profile and readiness,
-// and its sub-organisations. The profile is read-only for an API key.
+// OrganizationService is the key's organization (`/a/v1/organizations`): its profile and readiness,
+// and its sub-organizations. The profile is read-only for an API key.
 type OrganizationService struct{ baseService }
 
-// Get is the organisation's profile; orgID must be the key's own organisation (404 otherwise; `organization.read`).
+// Get is the organization's profile; orgID must be the key's own organization (404 otherwise; `organization.read`).
 func (s *OrganizationService) Get(ctx context.Context, orgID string, opts ...RequestOption) (*GetOrganizationData, error) {
 	out := &GetOrganizationData{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/a/v1/organizations/" + seg(orgID), Options: requestOptions(opts)}, out)
@@ -75,31 +75,31 @@ func (s *OrganizationService) GetReadiness(ctx context.Context, opts ...RequestO
 	return out, err
 }
 
-// ListSubOrganizations is a page of the organisation's sub-organisations, newest first, with the
+// ListSubOrganizations is a page of the organization's sub-organizations, newest first, with the
 // total in Pagination (`organization.children.read`; sandbox and live). Search keeps the ones whose
 // name holds it; IDs keeps only the ones named (at most 100). Without Limit a page holds 100, the
 // most. No key preset includes `organization.children.read`: it is added to a key by name, in the
-// dashboard's Create API Key dialog. 409 `BIZ014` when the key's organisation is itself a
-// sub-organisation.
+// dashboard's Create API Key dialog. 409 `BIZ014` when the key's organization is itself a
+// sub-organization.
 func (s *OrganizationService) ListSubOrganizations(ctx context.Context, query *ListSubOrganizationsQuery, opts ...RequestOption) (*Page[ListChildOrganizationsItem], error) {
 	return page[ListChildOrganizationsItem](ctx, &s.baseService, Call{Method: "GET", Path: "/a/v1/organizations/me/children", Query: query, Options: requestOptions(opts)})
 }
 
 // ListSubOrganizationsReadiness is the same page as ListSubOrganizations, with each
-// sub-organisation's onboarding checklist, live status and next step: which of a parent's
+// sub-organization's onboarding checklist, live status and next step: which of a parent's
 // businesses still have something to do (`organization.children.read`; sandbox and live). Whether
 // each is connected to the tax authority is TaxConnection.ListForSubOrganizations with the same ids.
 func (s *OrganizationService) ListSubOrganizationsReadiness(ctx context.Context, query *ListSubOrganizationsReadinessQuery, opts ...RequestOption) (*Page[ListChildOrganizationsReadinessItem], error) {
 	return page[ListChildOrganizationsReadinessItem](ctx, &s.baseService, Call{Method: "GET", Path: "/a/v1/organizations/me/children/readiness", Query: query, Options: requestOptions(opts)})
 }
 
-// CreateSubOrganization creates a sub-organisation of the key's organisation
+// CreateSubOrganization creates a sub-organization of the key's organization
 // (`organization.children.create`, which no key preset includes; a live key only: a sandbox key is
 // refused with 403 `BIZ003`). It is recorded under the parent's longest-standing Owner and starts
 // as `pending_verification` until its own onboarding is completed. No `Idempotency-Key` is sent and
 // the call is not retried: a name is unique under its parent, so a repeated request answers 409
-// `RES002`, and the organisation is found with ListSubOrganizations and Search. 402 `BIZ016` when
-// the plan allows no more organisations; at most 60 a minute for each key.
+// `RES002`, and the organization is found with ListSubOrganizations and Search. 402 `BIZ016` when
+// the plan allows no more organizations; at most 60 a minute for each key.
 func (s *OrganizationService) CreateSubOrganization(ctx context.Context, params *CreateSubOrganizationBody, opts ...RequestOption) (*CreateOrganizationData, error) {
 	out := &CreateOrganizationData{}
 	err := s.call(ctx, Call{Method: "POST", Path: "/a/v1/organizations", Body: params, Options: requestOptions(opts)}, out)
@@ -109,14 +109,14 @@ func (s *OrganizationService) CreateSubOrganization(ctx context.Context, params 
 // InvoiceSettingsService is invoice settings (`/i/v1/invoice-settings`): read-only for an API key.
 type InvoiceSettingsService struct{ baseService }
 
-// Get is the organisation's invoice settings in the key's mode (`invoice.read`).
+// Get is the organization's invoice settings in the key's mode (`invoice.read`).
 func (s *InvoiceSettingsService) Get(ctx context.Context, opts ...RequestOption) (*GetInvoiceSettingsData, error) {
 	out := &GetInvoiceSettingsData{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/i/v1/invoice-settings", Options: requestOptions(opts)}, out)
 	return out, err
 }
 
-// TaxConnectionService is the tax connection (`/i/v1/tax-connection`): the organisation's link to the tax authority.
+// TaxConnectionService is the tax connection (`/i/v1/tax-connection`): the organization's link to the tax authority.
 type TaxConnectionService struct{ baseService }
 
 // Get is the connection's state in the key's mode, its key and the next step (`tax_connection.read`).
@@ -127,7 +127,7 @@ func (s *TaxConnectionService) Get(ctx context.Context, opts ...RequestOption) (
 }
 
 // GetWithQuery is Get with the query (`tax_connection.read`): `Identifier: "true"` also resolves
-// which number the tax authority holds for the organisation (`EinvoicingIdentifier`, or
+// which number the tax authority holds for the organization (`EinvoicingIdentifier`, or
 // `IdentifierNextAction` when it holds none); `Fresh: "true"` asks the authority again. Both are
 // rationed: pass them only when that answer is needed. A nil query is Get. (einvoice-js overloads
 // `taxConnection.get(query, options)`; Go keeps Get's signature and adds this method.)
@@ -143,11 +143,11 @@ func (s *TaxConnectionService) GetWithQuery(ctx context.Context, query *GetTaxCo
 	return out, err
 }
 
-// ListForSubOrganizations is, for a parent organisation, the state of each named sub-organisation's
+// ListForSubOrganizations is, for a parent organization, the state of each named sub-organization's
 // connection to the tax authority in the key's mode, and whether a submission would pass
 // (`tax_connection.read`). IDs are the ids Organization.ListSubOrganizations answers: at most 100,
-// each once (400 `VAL001` otherwise). An id that is not one of the organisation's sub-organisations
-// is left out of the answer. Only the state is shown, never the sub-organisation's tax id or key.
+// each once (400 `VAL001` otherwise). An id that is not one of the organization's sub-organizations
+// is left out of the answer. Only the state is shown, never the sub-organization's tax id or key.
 func (s *TaxConnectionService) ListForSubOrganizations(ctx context.Context, query *SubOrganizationTaxConnectionsQuery, opts ...RequestOption) ([]ListChildTaxConnectionsItem, error) {
 	out := []ListChildTaxConnectionsItem{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/i/v1/tax-connection/children", Query: query, Options: requestOptions(opts)}, &out)

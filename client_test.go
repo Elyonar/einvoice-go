@@ -35,7 +35,7 @@ func TestClientNeedsOnlyTheKeyModeAndHostFollowFromIt(t *testing.T) {
 	}
 }
 
-func TestClientHasNoUserRoleInvitationAPIKeyOrOrganisationManagementServices(t *testing.T) {
+func TestClientHasNoUserRoleInvitationAPIKeyOrOrganizationManagementServices(t *testing.T) {
 	ct := reflect.TypeOf(Client{})
 	for _, gone := range []string{"Users", "Roles", "Invitations", "APIKeys", "ApiKeys", "Organizations", "Collection"} {
 		if _, found := ct.FieldByName(gone); found {
@@ -254,7 +254,7 @@ func TestClientTaxConnectionGetKeepsTheOptionsOnlyCallOf08AndGetWithQueryTakesTh
 	}
 }
 
-func TestClientListsSubOrganisationsAndTheirReadinessAsPagesJoiningAListOfIDs(t *testing.T) {
+func TestClientListsSubOrganizationsAndTheirReadinessAsPagesJoiningAListOfIDs(t *testing.T) {
 	pagination := map[string]any{"total": 2, "page": 1, "pageSize": 100, "totalPages": 1, "hasNext": false, "hasPrevious": false}
 	f := newFake(okAnswer([]map[string]any{{"id": "c1"}, {"id": "c2"}}, map[string]any{"pagination": pagination}))
 	c := newClient(t, f)
@@ -332,9 +332,9 @@ func TestClientAListOfIDsReachesTheAPIAsOneCommaSeparatedValueNotARepeatedKey(t 
 	}
 }
 
-// The hand-written sub-organisation queries and body are the generated ones with `ids` as a list
+// The hand-written sub-organization queries and body are the generated ones with `ids` as a list
 // and without `country`: a parameter the API adds must be added to them too.
-func TestClientTheSubOrganisationParamsCarryTheOperationsOwnFields(t *testing.T) {
+func TestClientTheSubOrganizationParamsCarryTheOperationsOwnFields(t *testing.T) {
 	names := func(v any, without string) string {
 		var out []string
 		rt := reflect.TypeOf(v)

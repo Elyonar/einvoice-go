@@ -26,7 +26,7 @@ func main() {
 	fmt.Println(yona.Mode()) // "sandbox" for sk_test_, "live" for sk_live_
 
 	// @step first-call Make your first call
-	// @text The readiness check lists what your organisation still needs before it can invoice in this mode.
+	// @text The readiness check lists what your organization still needs before it can invoice in this mode.
 	// @op getOrganizationReadiness
 	// @quickstart
 	readiness, err := yona.Organization.GetReadiness(ctx)
@@ -61,7 +61,7 @@ func main() {
 	}
 
 	// @step tax-connection Check the tax connection
-	// @text Each mode has its own connection to the tax authority. Live needs the organisation approved for live and its live connection made in the dashboard.
+	// @text Each mode has its own connection to the tax authority. Live needs the organization approved for live and its live connection made in the dashboard.
 	// @op getTaxConnection
 	connection, err := yona.TaxConnection.Get(ctx)
 	if err != nil {
