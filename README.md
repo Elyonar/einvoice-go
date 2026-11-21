@@ -213,7 +213,7 @@ http.HandleFunc("/webhooks/yona", func(w http.ResponseWriter, r *http.Request) {
 `VerifyWebhook` checks the `Yona-Signature` header over the raw body and returns the event. Always
 pass the raw bytes, and deduplicate on `event.ID`. `SignWebhookPayload` signs a payload the way Yona
 does, so you can test your handler locally. Endpoints are registered in the dashboard; the SDK can
-list and test them and inspect deliveries.
+list and test them, inspect deliveries and read how they have been arriving (`client.Webhooks.Health`).
 
 ## Guides
 
@@ -226,8 +226,8 @@ live key). Run them against your sandbox key with `YONA_API_KEY=sk_test_… make
 ## API reference
 
 Every method takes `ctx` first and optional trailing `...RequestOption`. Request and query types are
-named after the operation (`*CreateInvoiceBody`, `*ListInvoicesQuery`); a query may be nil. 128
-methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
+named after the operation (`*CreateInvoiceBody`, `*ListInvoicesQuery`); a query may be nil. 141
+methods in 28 modules: einvoice-js's 139, plus `TaxConnection.GetWithQuery` and
 `Billing.Partner.GetWithQuery` (see below).
 
 | Module | Methods |
@@ -240,25 +240,26 @@ methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
 | `client.Reference` | `ListHsCodes`, `ListHsCodeCategories`, `ListResources`, `GetResource`, `LookupTaxID`, `ValidateInvoice` |
 | `client.Buyers` | `Create`, `List`, `Get`, `Update`, `Delete`, `BulkDelete`, `VerifyTaxNumber`, `GetVerificationStatus`, `Search`, `CheckReachability`, `CheckWithTaxAuthority` |
 | `client.Sellers` | `List`, `Get`, `GetVerificationStatus`, `Search` |
-| `client.InboundInvoices` | `List`, `Get`, `GetAnalytics`, `ListHistoryRuns`, `GetHistoryRun` |
+| `client.InboundInvoices` | `List`, `Get`, `GetAnalytics`, `ListHistoryRuns`, `GetHistoryRun`, `LoadOlder` |
 | `client.IssuedHistory` | `List`, `Get`, `DownloadPDF` |
 | `client.InvoiceSettings` | `Get` |
 | `client.TaxConnection` | `Get`, `GetWithQuery`, `ListForSubOrganizations` |
-| `client.Organization` | `Get`, `GetReadiness`, `ListSubOrganizations`, `ListSubOrganizationsReadiness`, `CreateSubOrganization` |
-| `client.Billing.Accounts` | `GetMine`, `GetStats`, `CheckBalance` |
+| `client.Organization` | `Get`, `GetReadiness`, `ListSubOrganizations`, `ListSubOrganizationsReadiness`, `CreateSubOrganization`, `GetGroupTerms`, `VerifySubOrganizationTaxID`, `SetSubOrganizationContact`, `CreateSubOrganizationSetupLink`, `RevokeSubOrganizationSetupLink`, `SubmitSubOrganization` |
+| `client.Billing.Accounts` | `GetMine`, `GetStats`, `CheckBalance`, `GetCreditCosts` |
 | `client.Billing.Payments` | `List`, `Get` |
 | `client.Billing.Sandbox` | `ListTransactions`, `GetUsage` |
 | `client.Billing.Statements` | `Get` |
-| `client.Billing.Subscriptions` | `GetActive`, `List`, `Get`, `ListRenewals`, `PreviewPlanChange`, `GetDealOffer`, `QuoteSubOrgSlot` |
+| `client.Billing.Subscriptions` | `GetActive`, `List`, `Get`, `ListRenewals`, `PreviewPlanChange`, `GetDealOffer`, `QuoteSubOrgSlot`, `ListAddOns`, `QuoteAddOn` |
 | `client.Billing.Transactions` | `List`, `Get`, `GetUsageAnalytics`, `GetUsageByCostCode` |
 | `client.Billing.Usage` | `GetInvoices`, `QuoteOverage` |
 | `client.Billing.Plans` | `GetRecommendation` |
 | `client.Billing.Partner` | `Get`, `GetWithQuery`, `GetOffer`, `QuoteSeat`, `QuoteBasket`, `QuotePlanChange` |
-| `client.Collections` | `ListAccounts`, `CreateAccount`, `GetAccount`, `GetAccountStatus`, `DeactivateAccount`, `QuoteFee`, `ListPayments`, `ListBuyerCredits`, `ListExceptions`, `ResolveException`, `ListSettlementAccounts`, `GetSettlementAccount`, `ListBanks` |
+| `client.Collections` | `ListAccounts`, `CreateAccount`, `GetAccount`, `GetAccountStatus`, `DeactivateAccount`, `QuoteFee`, `ListPayments`, `ListBuyerCredits`, `GetSummary`, `GetDailySeries`, `ListExceptions`, `ResolveException`, `ListSettlementAccounts`, `GetSettlementAccount`, `ListBanks` |
 | `client.Webhooks.Endpoints` | `List`, `Get`, `Test` |
 | `client.Webhooks.Deliveries` | `List`, `Get`, `Redeliver` |
 | `client.Webhooks.Events` | `List`, `Get`, `Redeliver` |
 | `client.Webhooks.EventTypes` | `List` |
+| `client.Webhooks.Health` | `Get`, `GetDaily` |
 | package `einvoice` | `VerifyWebhook`, `SignWebhookPayload`, `ComputeWebhookSignature`, `ParseSignatureHeader`, `Paginate`, `Collect`, `CodeListItems` |
 
 - `TaxConnection.GetWithQuery(ctx, &einvoice.GetTaxConnectionQuery{Identifier: einvoice.Ptr(einvoice.GetTaxConnectionQueryIdentifierTrue)})`
@@ -302,11 +303,14 @@ methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
     works in sandbox and live, and with `Paginate`.
   - `Organization.ListSubOrganizationsReadiness` (`GET /a/v1/organizations/me/children/readiness`)
     answers the same page with each sub-organisation's checklist, `LiveStatus` and `NextStep`.
-  - `Organization.CreateSubOrganization(ctx, &einvoice.CreateSubOrganizationBody{BusinessName, Email, PhoneNumber, Website})`
+  - `Organization.CreateSubOrganization(ctx, &einvoice.CreateSubOrganizationBody{BusinessName, Email, PhoneNumber, Website, ExternalReference})`
     (`POST /a/v1/organizations`) needs a live key (a sandbox key is refused with 403 `BIZ003`). The
     new organisation is recorded under the parent's longest-standing Owner and is
-    `pending_verification` until it completes its own onboarding. No `Idempotency-Key` is sent and
-    the SDK does not retry it: a name is unique under its parent, so a repeat answers 409 `RES002`.
+    `pending_verification` until it completes its own onboarding. An `Idempotency-Key` is sent
+    (yours from `WithIdempotencyKey`, or one the SDK makes), so a retried call answers the
+    organisation already made, with `Replayed` true; the same key with other details is 409
+    `BIZ107`. `ExternalReference` is your own id for the business: the same reference with the same
+    name also answers the business already made. A name is unique under its parent (409 `RES002`).
     402 `BIZ016` when the plan allows no more organisations; 60 calls a minute for each key.
   - `TaxConnection.ListForSubOrganizations(ctx, &einvoice.SubOrganizationTaxConnectionsQuery{IDs: ids})`
     (`GET /i/v1/tax-connection/children?ids=`, `tax_connection.read`) is for a parent organisation:
@@ -317,6 +321,8 @@ methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
     comma-separated value (`ids=a,b`), as the API reads it, never as a repeated key.
   - The parent's `organization.child.created` webhook carries `keyId` when a key created the
     sub-organisation: decode it into `einvoice.OrganizationChildCreatedData`.
+  - A key that also holds `organization.children.onboard` takes the businesses it creates through
+    managed onboarding: see [Onboarding your businesses](#onboarding-your-businesses-managed-onboarding).
 - `Billing.Partner.GetWithQuery(ctx, &einvoice.GetPartnerQuery{Page: einvoice.Ptr(int64(2)), Limit: einvoice.Ptr(int64(50))})`
   (`GET /b/v1/partner?page=&limit=`) reads another page of the businesses the partner pays for;
   the answer's `BusinessesPage` says which page and how many there are in all. `Get(ctx,
@@ -325,6 +331,23 @@ methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
 - `Collections` answers only where collections are switched on for the key's mode; elsewhere 409
   `BIZ120`. Its writes (`CreateAccount`, `DeactivateAccount`, `ResolveException`) take no
   `Idempotency-Key` and are not retried.
+- `Collections.GetSummary(ctx, &einvoice.GetCollectionSummaryQuery{From, To})`
+  (`GET /b/v1/collection/summary`) is the money received, fees, payouts and reconciliation between
+  `From` and `To` (366 days at most), beside the window before it;
+  `Collections.GetDailySeries` (`GET /b/v1/collection/summary/daily`) is the money received for
+  each UTC day of the window. Both need `collection.payment.read`.
+- `Billing.Accounts.GetCreditCosts` (`GET /b/v1/billing-accounts/me/credit-costs`,
+  `billing.account.read`) is what each action costs the organisation, in credits, under its own
+  plan and terms.
+- `Billing.Subscriptions.ListAddOns` (`GET /b/v1/subscription/add-ons`) is the slot add-ons the
+  organisation's plan offers and how many it holds;
+  `Billing.Subscriptions.QuoteAddOn(ctx, kind, &einvoice.GetAddOnQuoteQuery{Slots: 5})`
+  (`GET /b/v1/subscription/add-ons/{kind}/quote`) is what that many more of one would cost now.
+  Both need `billing.subscription.read`; buying is done in the Yona app.
+- `Webhooks.Health.Get(ctx, &einvoice.GetWebhookHealthQuery{From, To})` (`GET /n/v1/webhook-health`)
+  counts the deliveries between `From` and `To` (31 days at most) for each endpoint and event
+  type; `Webhooks.Health.GetDaily` (`GET /n/v1/webhook-health/daily`) counts them for each UTC day,
+  and `EndpointID` keeps one endpoint. Both need `webhook.delivery.read`.
 - `Billing.Usage.GetInvoices`, `Billing.Plans.GetRecommendation`, `Billing.Partner.GetOffer` and
   `Billing.Subscriptions.GetDealOffer` return nil (and no error) when the API answers `null`.
 - The payments service's reads (bank account, transfers) join with its launch; until then they are
@@ -333,7 +356,75 @@ methods in 27 modules: einvoice-js's 126, plus `TaxConnection.GetWithQuery` and
 Account management (users, roles, API keys, purchases, webhook endpoint settings) is done in the
 Yona dashboard, not through the API key. So is managing a sub-organisation (its profile, members,
 onboarding, tax connection): in the dashboard, signed in to that sub-organisation. A key lists
-sub-organisations and creates one.
+sub-organisations, creates one and, when it holds `organization.children.onboard`, takes the ones
+it creates through managed onboarding.
+
+### Onboarding your businesses (managed onboarding)
+
+A live key that also holds `organization.children.onboard` (in no preset; an Owner or Admin adds
+it, after accepting the managed onboarding terms in the Yona app) takes each business it creates
+from created to waiting for approval:
+
+```go
+business, err := client.Organization.CreateSubOrganization(ctx, &einvoice.CreateSubOrganizationBody{
+	BusinessName:      "Bola Stores Limited",
+	Email:             "accounts@bolastores.example",
+	ExternalReference: einvoice.Ptr("crm-0042"), // your own id: the same reference again answers the same business
+})
+if err != nil {
+	log.Fatal(err)
+}
+if _, err := client.Organization.VerifySubOrganizationTaxID(ctx, business.ID, &einvoice.VerifyChildOrganizationTaxIdBody{
+	BusinessName: "Bola Stores Limited",
+	TaxNo:        "1234567890123",
+}); err != nil {
+	log.Fatal(err)
+}
+if _, err := client.Organization.SetSubOrganizationContact(ctx, business.ID, &einvoice.SetChildOrganizationContactBody{
+	PhoneNumber: "+2348031234567",
+}); err != nil {
+	log.Fatal(err)
+}
+link, err := client.Organization.CreateSubOrganizationSetupLink(ctx, business.ID, &einvoice.CreateChildOrganizationSetupLinkBody{
+	ExpiresInDays: einvoice.Ptr(14.0),
+})
+if err != nil {
+	log.Fatal(err)
+}
+// link.URL is answered once (it is nil on a repeated call): send it to the business owner now.
+if _, err := client.Organization.SubmitSubOrganization(ctx, business.ID); err != nil {
+	log.Fatal(err)
+}
+```
+
+| Method | Route | Capability |
+|---|---|---|
+| `GetGroupTerms` | `GET /a/v1/organizations/me/group-terms` | `organization.children.read` |
+| `VerifySubOrganizationTaxID` | `POST /a/v1/organizations/me/children/{childId}/onboarding/tax-id` | `organization.children.onboard` |
+| `SetSubOrganizationContact` | `PUT /a/v1/organizations/me/children/{childId}/onboarding/contact` | `organization.children.onboard` |
+| `CreateSubOrganizationSetupLink` | `POST /a/v1/organizations/me/children/{childId}/setup-link` | `organization.children.onboard` |
+| `RevokeSubOrganizationSetupLink` | `DELETE /a/v1/organizations/me/children/{childId}/setup-link` | `organization.children.onboard` |
+| `SubmitSubOrganization` | `POST /a/v1/organizations/me/children/{childId}/onboarding/submit` | `organization.children.onboard` |
+
+- `Organization.GetGroupTerms` says whether the organisation has accepted the managed onboarding
+  terms (`Accepted` is true only for the current version). An API key cannot accept them.
+- The business owner opens the link, proves the business phone with a code sent by SMS and, once
+  Yona has approved the business, gives the consent that lets Yona report its e-invoices.
+  `SubmitSubOrganization` can be called before the owner has done anything: the business goes to
+  review by itself when the phone is verified.
+- Every call can be sent again. `CreateSubOrganization` and `CreateSubOrganizationSetupLink` send
+  an `Idempotency-Key`; a repeated Tax ID check, contact or submit answers where the business
+  stands, with `Replayed` true where nothing was done. A nil body for
+  `CreateSubOrganizationSetupLink` gives the link the default life of 14 days (30 at most).
+- A business the key may not onboard (not yours, one its own people set up, one Yona has approved)
+  answers 404 `RES001`. After approval the key can only make a new setup link.
+  `RevokeSubOrganizationSetupLink` withdraws the working link at once.
+- The parent hears each step on its webhooks: `organization.child.tax_id_verified`,
+  `.onboarding_submitted`, `.phone_verified`, `.live_access_approved`, `.live_access_rejected`
+  (decode into `einvoice.OrganizationChildStepData`), and the business's tax connection:
+  `.tax_connection_action_required` (`einvoice.OrganizationChildTaxConnectionActionRequiredData`),
+  `.tax_connection_connected` (`einvoice.OrganizationChildStepData` too) and
+  `.tax_connection_suspended` (`einvoice.OrganizationChildTaxConnectionSuspendedData`).
 
 ## Configuration
 

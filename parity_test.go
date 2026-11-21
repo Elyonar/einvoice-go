@@ -250,6 +250,27 @@ var parityMethods = []parityEntry{
 		_, err := c.Organization.CreateSubOrganization(ctx, &CreateSubOrganizationBody{})
 		return err
 	}},
+	{"Organization.GetGroupTerms", func(ctx context.Context, c *Client) error { _, err := c.Organization.GetGroupTerms(ctx); return err }},
+	{"Organization.VerifySubOrganizationTaxID", func(ctx context.Context, c *Client) error {
+		_, err := c.Organization.VerifySubOrganizationTaxID(ctx, "ID1", &VerifyChildOrganizationTaxIdBody{})
+		return err
+	}},
+	{"Organization.SetSubOrganizationContact", func(ctx context.Context, c *Client) error {
+		_, err := c.Organization.SetSubOrganizationContact(ctx, "ID1", &SetChildOrganizationContactBody{})
+		return err
+	}},
+	{"Organization.CreateSubOrganizationSetupLink", func(ctx context.Context, c *Client) error {
+		_, err := c.Organization.CreateSubOrganizationSetupLink(ctx, "ID1", nil)
+		return err
+	}},
+	{"Organization.RevokeSubOrganizationSetupLink", func(ctx context.Context, c *Client) error {
+		_, err := c.Organization.RevokeSubOrganizationSetupLink(ctx, "ID1")
+		return err
+	}},
+	{"Organization.SubmitSubOrganization", func(ctx context.Context, c *Client) error {
+		_, err := c.Organization.SubmitSubOrganization(ctx, "ID1")
+		return err
+	}},
 
 	{"Billing.Accounts.GetMine", func(ctx context.Context, c *Client) error { _, err := c.Billing.Accounts.GetMine(ctx, nil); return err }},
 	{"Billing.Accounts.GetStats", func(ctx context.Context, c *Client) error {
@@ -258,6 +279,10 @@ var parityMethods = []parityEntry{
 	}},
 	{"Billing.Accounts.CheckBalance", func(ctx context.Context, c *Client) error {
 		_, err := c.Billing.Accounts.CheckBalance(ctx, "ID1", &CheckBillingAccountBalanceQuery{Credits: 1})
+		return err
+	}},
+	{"Billing.Accounts.GetCreditCosts", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Accounts.GetCreditCosts(ctx)
 		return err
 	}},
 	{"Billing.Payments.List", func(ctx context.Context, c *Client) error { _, err := c.Billing.Payments.List(ctx, nil); return err }},
@@ -297,6 +322,14 @@ var parityMethods = []parityEntry{
 	}},
 	{"Billing.Subscriptions.QuoteSubOrgSlot", func(ctx context.Context, c *Client) error {
 		_, err := c.Billing.Subscriptions.QuoteSubOrgSlot(ctx)
+		return err
+	}},
+	{"Billing.Subscriptions.ListAddOns", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Subscriptions.ListAddOns(ctx)
+		return err
+	}},
+	{"Billing.Subscriptions.QuoteAddOn", func(ctx context.Context, c *Client) error {
+		_, err := c.Billing.Subscriptions.QuoteAddOn(ctx, "ID1", &GetAddOnQuoteQuery{Slots: 1})
 		return err
 	}},
 	{"Billing.Transactions.List", func(ctx context.Context, c *Client) error {
@@ -384,6 +417,14 @@ var parityMethods = []parityEntry{
 		_, err := c.Collections.ListBuyerCredits(ctx, nil)
 		return err
 	}},
+	{"Collections.GetSummary", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.GetSummary(ctx, &GetCollectionSummaryQuery{From: "2026-11-01T00:00:00Z", To: "2026-11-15T00:00:00Z"})
+		return err
+	}},
+	{"Collections.GetDailySeries", func(ctx context.Context, c *Client) error {
+		_, err := c.Collections.GetDailySeries(ctx, &GetCollectionDailySeriesQuery{From: "2026-11-01T00:00:00Z", To: "2026-11-15T00:00:00Z"})
+		return err
+	}},
 	{"Collections.ListExceptions", func(ctx context.Context, c *Client) error {
 		_, err := c.Collections.ListExceptions(ctx, nil)
 		return err
@@ -427,6 +468,14 @@ var parityMethods = []parityEntry{
 		return err
 	}},
 	{"Webhooks.EventTypes.List", func(ctx context.Context, c *Client) error { _, err := c.Webhooks.EventTypes.List(ctx); return err }},
+	{"Webhooks.Health.Get", func(ctx context.Context, c *Client) error {
+		_, err := c.Webhooks.Health.Get(ctx, &GetWebhookHealthQuery{From: "2026-11-15T12:00:00Z", To: "2026-11-16T12:00:00Z"})
+		return err
+	}},
+	{"Webhooks.Health.GetDaily", func(ctx context.Context, c *Client) error {
+		_, err := c.Webhooks.Health.GetDaily(ctx, &GetWebhookHealthDailyQuery{From: "2026-11-15T12:00:00Z", To: "2026-11-16T12:00:00Z"})
+		return err
+	}},
 }
 
 func loadSnapshot(t *testing.T) snapshot {
@@ -675,18 +724,18 @@ func TestParityPATCHRoutesThatAcceptAKeySendItOnlyWhenTheCallerGivesOne(t *testi
 
 func TestParityTheMethodCountIsTheDocumentedSurface(t *testing.T) {
 	calls := recordCalls(t)
-	// einvoice-js d3bc2d4 (to be 0.9.1) has 126 methods in 27 modules; Go adds
+	// einvoice-js b349066 (to be 0.9.3) has 139 methods in 28 modules; Go adds
 	// TaxConnection.GetWithQuery and Billing.Partner.GetWithQuery, its form of the overloaded
 	// taxConnection.get(query, options) and billing.partner.get(query, options), so each Get keeps
 	// its earlier signature.
-	if len(calls) != 128 {
-		t.Fatalf("%d methods: 128 methods in 27 modules at einvoice-js d3bc2d4 (update CLAUDE.md and README when this changes)", len(calls))
+	if len(calls) != 141 {
+		t.Fatalf("%d methods: 141 methods in 28 modules at einvoice-js b349066 (update CLAUDE.md and README when this changes)", len(calls))
 	}
 	modules := map[string]bool{}
 	for _, c := range calls {
 		modules[c.method[:strings.LastIndex(c.method, ".")]] = true
 	}
-	if len(modules) != 27 {
+	if len(modules) != 28 {
 		t.Fatalf("%d modules", len(modules))
 	}
 }

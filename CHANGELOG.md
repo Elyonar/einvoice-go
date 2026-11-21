@@ -3,6 +3,54 @@
 All notable changes to this project will be documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+In line with `@useyona/einvoice-js` 0.9.3 (the Yona API as of 21 Nov 2026): the 151 operations an
+API key may call (138 before), 13 documented exclusions; 141 methods in 28 modules. No method is
+removed or renamed. In the generated models one type is renamed (its earlier name still compiles)
+and four fields are now pointers: see Changed.
+
+### Added
+
+- Managed onboarding: a parent organisation's live key takes each business it creates from created
+  to waiting for approval. `client.Organization.VerifySubOrganizationTaxID`,
+  `SetSubOrganizationContact`, `CreateSubOrganizationSetupLink`, `RevokeSubOrganizationSetupLink`
+  and `SubmitSubOrganization`, with the new capability `organization.children.onboard` (in no
+  preset). `client.Organization.GetGroupTerms` says whether the organisation has accepted the
+  managed onboarding terms that allow it.
+- The setup link's `URL` is answered once; a retried `CreateSubOrganizationSetupLink` answers the
+  same link without it (`URL` nil, `Replayed` true).
+- `CreateSubOrganizationBody.ExternalReference`, your own id for the business: the same reference
+  with the same name answers the business already made. `Intent` is there too.
+- Eight webhook types the parent hears: `organization.child.tax_id_verified`,
+  `.onboarding_submitted`, `.phone_verified`, `.live_access_approved`, `.live_access_rejected`
+  (`einvoice.OrganizationChildStepData`), and `.tax_connection_action_required`
+  (`einvoice.OrganizationChildTaxConnectionActionRequiredData`), `.tax_connection_connected` and
+  `.tax_connection_suspended` (`einvoice.OrganizationChildTaxConnectionSuspendedData`), each with
+  its `WebhookEventOrganizationChild…` constant.
+- `client.Billing.Accounts.GetCreditCosts`, `client.Billing.Subscriptions.ListAddOns` and
+  `QuoteAddOn`, `client.Collections.GetSummary` and `GetDailySeries`, and the new module
+  `client.Webhooks.Health` with `Get` and `GetDaily`: reads the API has opened to API keys.
+
+### Changed
+
+- `client.Organization.CreateSubOrganization` now sends an `Idempotency-Key` (yours from
+  `WithIdempotencyKey`, or one the SDK makes), so a retried call answers the business already made,
+  with `Replayed` true, and the SDK retries it like every keyed write.
+- The generated models follow the API. No method is removed or renamed, and everything adds except
+  the following.
+  - Four fields are now pointers, because the API can answer `null` for them: check for nil before
+    reading. `OverageQuoteDto.CapPercent` and `PricePercent` (`*int64`) and `PeriodEnd` (`*string`)
+    are nil on a top-up; `SubOrgSlotQuoteDto.PercentBp` (`*int64`) is nil for a seat.
+  - The API renamed a schema: the type of `AccountPlanDto.Entitlements` is now
+    `AccountEntitlementsDto`, with the same three fields. `PlanEntitlementsDto` remains as a
+    deprecated alias of it, so code that names it still compiles; it goes with the next breaking
+    release.
+- The payment kind gains the values `add_on_slots`, `metered_statement` and `metered_topup`
+  (`PaymentDtoKind`, `PaymentDetailDtoKind`, `StatementPaymentDtoKind` and the
+  `ListPaymentsQueryKind` filter).
+- `guides/operations.json` covers 138 operations (125 before).
+
 ## 0.2.2 (2026-11-12)
 
 In line with `@useyona/einvoice-js` 0.9.2: held invoices, and the tax connection waiting for the
