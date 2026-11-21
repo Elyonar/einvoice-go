@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file. The format is based on
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## 0.2.3 (2026-11-21)
 
 In line with `@useyona/einvoice-js` 0.9.3 (the Yona API as of 21 Nov 2026): the 151 operations an
 API key may call (138 before), 13 documented exclusions; 141 methods in 28 modules. No method is
