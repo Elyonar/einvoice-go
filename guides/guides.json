@@ -1,6 +1,6 @@
 {
   "sdkVersion": "0.2.2",
-  "generatedFrom": "812e58e",
+  "generatedFrom": "2105d8f",
   "install": "go get github.com/elyonar/einvoice-go",
   "quickStart": "package main\n\nimport (\n\t\"context\"\n\t\"encoding/json\"\n\t\"fmt\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nfunc main() {\n\tctx := context.Background()\n\n\tyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(yona.Mode()) // \"sandbox\" for sk_test_, \"live\" for sk_live_\n\n\treadiness, err := yona.Organization.GetReadiness(ctx)\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tout, _ := json.MarshalIndent(readiness, \"\", \"  \")\n\tfmt.Println(string(out))\n}",
   "recipes": [
@@ -22,7 +22,7 @@
           "title": "Create a buyer",
           "text": "A buyer is the party you invoice. A B2B buyer carries its tax id (TIN), which the tax authority checks on submission. A buyer can never carry your own organisation's TIN (the authority refuses SAME_PARTY_TIN); the sandbox accepts any well-formed TIN. A TIN is unique per organisation: on 409 RES002, reuse the buyer you already have.",
           "sdk": "\ttaxID := \"12345678-0001\"\n\tbuyer, err := yona.Buyers.Create(ctx, &einvoice.CreateBuyerBody{\n\t\tName:      \"Acme Nigeria Ltd \" + ref,\n\t\tPartyType: einvoice.Ptr(einvoice.CreateBuyerDtoPartyTypeCompany),\n\t\tTaxID:     einvoice.Ptr(taxID),\n\t\tEmail:     einvoice.Ptr(\"accounts.\" + ref + \"@example.com\"),\n\t\tAddress:   &einvoice.BuyerAddressDto{Line1: \"1 Marina\", City: \"Lagos\", Country: \"NG\"},\n\t})\n\tvar conflict *einvoice.ConflictError\n\tif errors.As(err, &conflict) && conflict.ErrorCode == \"RES002\" {\n\t\tfound, listErr := yona.Buyers.List(ctx, &einvoice.ListBuyersQuery{Search: einvoice.Ptr(taxID), Limit: einvoice.Ptr(1.0)})\n\t\tif listErr != nil || len(found.Data) == 0 {\n\t\t\tlog.Fatal(err)\n\t\t}\n\t\tbuyer, err = &found.Data[0], nil\n\t}\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tfmt.Println(\"buyer\", buyer.ID)",
-          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/buyers\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"string\"\n}'",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/buyers\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"Adebayo Trading\"\n}'",
           "operationId": "createBuyer"
         },
         {
@@ -385,7 +385,7 @@
           "title": "Save a buyer with the codes",
           "text": "Send the state and LGA codes in the buyer's address. The exact names are accepted too and are stored as the codes; the answer always carries the codes. Both fields are optional.",
           "sdk": "\tbuyer, err := yona.Buyers.Create(ctx, &einvoice.CreateBuyerBody{\n\t\tName:      fmt.Sprintf(\"Acme Trading %d\", time.Now().UnixMilli()),\n\t\tPartyType: einvoice.Ptr(einvoice.CreateBuyerDtoPartyTypeIndividual),\n\t\tAddress: &einvoice.BuyerAddressDto{\n\t\t\tLine1: \"12 Allen Avenue\", City: \"Ikeja\", State: einvoice.Ptr(lagos.Code), Lga: einvoice.Ptr(ikeja.Code), Country: \"NG\",\n\t\t},\n\t})\n\tif err != nil {\n\t\tlog.Fatal(err)\n\t}\n\tsaved := buyer.Address\n\tif saved == nil || saved.State == nil || *saved.State != lagos.Code || saved.Lga == nil || *saved.Lga != ikeja.Code {\n\t\tlog.Fatal(\"the buyer did not keep the codes\")\n\t}\n\tfmt.Println(\"buyer\", buyer.ID, *saved.State, *saved.Lga)",
-          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/buyers\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"string\"\n}'",
+          "curl": "curl -X POST \"https://gp.useyona.com/i/v1/buyers\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"name\": \"Adebayo Trading\"\n}'",
           "operationId": "createBuyer"
         },
         {
@@ -456,7 +456,7 @@
           "title": "Create a sub-organisation",
           "text": "With a live key that holds organization.children.create, this answers the new organisation; its Status is pending_verification until it completes its own onboarding. A name is unique under its parent, so a repeat answers 409 RES002 and nothing is created twice. A sandbox key is refused, which is what this step shows in sandbox; with a live key it creates nothing here.",
           "sdk": "\tif yona.Mode() == einvoice.ModeSandbox {\n\t\tcreated, err := yona.Organization.CreateSubOrganization(ctx, &einvoice.CreateSubOrganizationBody{BusinessName: \"Acme Retail Ltd\", Email: \"accounts@acme.example\"})\n\t\tvar refused *einvoice.PermissionError\n\t\tswitch {\n\t\tcase err == nil:\n\t\t\tlog.Fatal(\"a sandbox key created \", created.ID)\n\t\tcase !errors.As(err, &refused):\n\t\t\tlog.Fatal(err)\n\t\t}\n\t\tfmt.Println(\"refused in sandbox:\", refused.ErrorCode)\n\t}\n}",
-          "curl": "curl -X POST \"https://gp.useyona.com/a/v1/organizations\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"businessName\": \"Acme Retail Ltd\",\n  \"email\": \"ada@example.com\"\n}'",
+          "curl": "curl -X POST \"https://gp.useyona.com/a/v1/organizations\" \\\n  -H \"Authorization: Bearer $YONA_API_KEY\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"businessName\": \"Acme Retail Ltd\",\n  \"email\": \"ada@example.com\"\n}'",
           "operationId": "createOrganization"
         }
       ]

@@ -56,6 +56,22 @@ func (s *CollectionsService) ListPayments(ctx context.Context, query *ListCollec
 	return page[ListCollectionPaymentsItem](ctx, &s.baseService, Call{Method: "GET", Path: "/b/v1/collection/payments", Query: query, Options: requestOptions(opts)})
 }
 
+// GetSummary is money received, fees, payouts and reconciliation between `From` and `To` (366 days
+// at most), beside the window before it (`collection.payment.read`).
+func (s *CollectionsService) GetSummary(ctx context.Context, query *GetCollectionSummaryQuery, opts ...RequestOption) (*GetCollectionSummaryData, error) {
+	out := &GetCollectionSummaryData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/collection/summary", Query: query, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// GetDailySeries is money received for each UTC day between `From` and `To`, 366 days at most
+// (`collection.payment.read`).
+func (s *CollectionsService) GetDailySeries(ctx context.Context, query *GetCollectionDailySeriesQuery, opts ...RequestOption) (*GetCollectionDailySeriesData, error) {
+	out := &GetCollectionDailySeriesData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/collection/summary/daily", Query: query, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
 // ListBuyerCredits is buyer credit: each buyer's paid remainder not yet applied or refunded
 // (`collection.payment.read`).
 func (s *CollectionsService) ListBuyerCredits(ctx context.Context, query *ListCollectionBuyerCreditsQuery, opts ...RequestOption) (*Page[ListCollectionBuyerCreditsItem], error) {

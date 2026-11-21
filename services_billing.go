@@ -30,6 +30,14 @@ func (s *BillingAccountsService) CheckBalance(ctx context.Context, accountID str
 	return out, err
 }
 
+// GetCreditCosts is what each action costs the organisation, in credits, under its own plan and
+// terms (`billing.account.read`).
+func (s *BillingAccountsService) GetCreditCosts(ctx context.Context, opts ...RequestOption) (*GetOrganizationCreditCostsData, error) {
+	out := &GetOrganizationCreditCostsData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/billing-accounts/me/credit-costs", Options: requestOptions(opts)}, out)
+	return out, err
+}
+
 // PaymentsService is payments (`/b/v1/payments`): read-only for an API key (purchases are made in the dashboard).
 type PaymentsService struct{ baseService }
 
@@ -115,6 +123,22 @@ func (s *SubscriptionsService) GetDealOffer(ctx context.Context, opts ...Request
 func (s *SubscriptionsService) QuoteSubOrgSlot(ctx context.Context, opts ...RequestOption) (*GetSubOrgSlotQuoteData, error) {
 	out := &GetSubOrgSlotQuoteData{}
 	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/sub-org-slots/quote", Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// ListAddOns is the slot add-ons the organisation's plan offers, and how many it holds
+// (`billing.subscription.read`).
+func (s *SubscriptionsService) ListAddOns(ctx context.Context, opts ...RequestOption) (*GetAddOnsData, error) {
+	out := &GetAddOnsData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/subscription/add-ons", Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// QuoteAddOn is what `Slots` more of one add-on would cost now (`billing.subscription.read`).
+// Buying is done in the Yona app.
+func (s *SubscriptionsService) QuoteAddOn(ctx context.Context, kind string, query *GetAddOnQuoteQuery, opts ...RequestOption) (*GetAddOnQuoteData, error) {
+	out := &GetAddOnQuoteData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/subscription/add-ons/" + seg(kind) + "/quote", Query: query, Options: requestOptions(opts)}, out)
 	return out, err
 }
 
@@ -225,6 +249,12 @@ func (s *TransactionsService) GetUsageByCostCode(ctx context.Context, query *Get
 	err := s.call(ctx, Call{Method: "GET", Path: "/b/v1/transactions/breakdown/by-endpoint", Query: query, Options: requestOptions(opts)}, &out)
 	return out, err
 }
+
+// PlanEntitlementsDto is the earlier name of AccountEntitlementsDto, the type of
+// AccountPlanDto.Entitlements; the two are the same type.
+//
+// Deprecated: the API renamed this schema; use AccountEntitlementsDto. Removed with the next breaking release.
+type PlanEntitlementsDto = AccountEntitlementsDto
 
 // BillingService is billing (`/b/v1`), grouped as the API tags it.
 type BillingService struct {

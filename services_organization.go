@@ -35,7 +35,9 @@ type ListSubOrganizationsReadinessQuery struct {
 }
 
 // CreateSubOrganizationBody is the body of Organization.CreateSubOrganization: the API's
-// CreateOrganizationBody without `country`, which a sub-organisation takes from its parent.
+// CreateOrganizationBody without `country`, which a sub-organisation takes from its parent, and
+// without `groupOnboarding`, the signed-in person's field (a key that holds
+// `organization.children.onboard` makes a managed business without it).
 // (einvoice-js names it CreateSubOrganizationParams.)
 type CreateSubOrganizationBody struct {
 	// BusinessName is the new organisation's name, unique under its parent.
@@ -47,7 +49,16 @@ type CreateSubOrganizationBody struct {
 	// PhoneNumber is E.164; spaces, dashes, dots and brackets are removed before validation.
 	PhoneNumber *string `json:"phoneNumber,omitempty"`
 
+	// Website is the new organisation's website: an https URL of at most 255 characters.
 	Website *string `json:"website,omitempty"`
+
+	// Intent is which rail the organisation comes for: core (the default), access, or both.
+	Intent *CreateOrganizationDtoIntent `json:"intent,omitempty"`
+
+	// ExternalReference is your own id for the business: 1 to 64 of letters, digits, `.`, `_`, `:`
+	// and `-`. It is unique among the parent's sub-organisations and never changed; the same
+	// reference with the same name answers the business already made.
+	ExternalReference *string `json:"externalReference,omitempty"`
 }
 
 // SubOrganizationTaxConnectionsQuery is the query of TaxConnection.ListForSubOrganizations: the
@@ -58,7 +69,8 @@ type SubOrganizationTaxConnectionsQuery struct {
 }
 
 // OrganizationService is the key's organisation (`/a/v1/organizations`): its profile and readiness,
-// and its sub-organisations. The profile is read-only for an API key.
+// its sub-organisations, and the managed onboarding of the businesses it creates. The profile is
+// read-only for an API key.
 type OrganizationService struct{ baseService }
 
 // Get is the organisation's profile; orgID must be the key's own organisation (404 otherwise; `organization.read`).
@@ -96,13 +108,102 @@ func (s *OrganizationService) ListSubOrganizationsReadiness(ctx context.Context,
 // CreateSubOrganization creates a sub-organisation of the key's organisation
 // (`organization.children.create`, which no key preset includes; a live key only: a sandbox key is
 // refused with 403 `BIZ003`). It is recorded under the parent's longest-standing Owner and starts
-// as `pending_verification` until its own onboarding is completed. No `Idempotency-Key` is sent and
-// the call is not retried: a name is unique under its parent, so a repeated request answers 409
-// `RES002`, and the organisation is found with ListSubOrganizations and Search. 402 `BIZ016` when
-// the plan allows no more organisations; at most 60 a minute for each key.
+// as `pending_verification` until its own onboarding is completed. Sends an `Idempotency-Key`
+// (generated unless WithIdempotencyKey is given), so a retried call answers the organisation
+// already made, with `Replayed: true`; the same key with other details is 409 `BIZ107`.
+// ExternalReference is your own id for the business (1 to 64 of letters, digits, `.`, `_`, `:`,
+// `-`): unique among the parent's sub-organisations, never changed, and the same reference with
+// the same name also answers the business already made. A name is unique under its parent (409
+// `RES002`). 402 `BIZ016` when the plan allows no more organisations; at most 60 a minute for each
+// key.
+//
+// With a key that also holds `organization.children.onboard`, in an organisation that has accepted
+// the managed onboarding terms, the business is created for managed onboarding
+// (`OnboardingManaged: true`, `Origin: "parent_key"`): the same key then takes it through
+// VerifySubOrganizationTaxID, SetSubOrganizationContact, CreateSubOrganizationSetupLink and
+// SubmitSubOrganization.
 func (s *OrganizationService) CreateSubOrganization(ctx context.Context, params *CreateSubOrganizationBody, opts ...RequestOption) (*CreateOrganizationData, error) {
 	out := &CreateOrganizationData{}
-	err := s.call(ctx, Call{Method: "POST", Path: "/a/v1/organizations", Body: params, Options: requestOptions(opts)}, out)
+	err := s.call(ctx, Call{Method: "POST", Path: "/a/v1/organizations", Body: params, Idempotent: true, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// GetGroupTerms is where the organisation stands with the managed onboarding terms, which let it
+// onboard its businesses (`organization.children.read`; sandbox and live). Accepted is true only
+// for the current version. An Owner or Admin accepts them in the Yona app; an API key cannot.
+func (s *OrganizationService) GetGroupTerms(ctx context.Context, opts ...RequestOption) (*GetGroupTermsData, error) {
+	out := &GetGroupTermsData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/a/v1/organizations/me/group-terms", Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// VerifySubOrganizationTaxID is managed onboarding, step 2: it verifies the Tax ID of a business
+// this key created (`organization.children.onboard`, in no preset; a live key only). The
+// registry's name for the number is compared with BusinessName. The same number, already verified,
+// answers the stored result with `Replayed: true` and makes no second lookup. No `Idempotency-Key`
+// is sent and the call is not retried.
+//
+// 404 `RES001` for any business the key may not onboard: not the organisation's, one its own
+// people set up, or one Yona has approved. 409 `BIZ004` with `errors[0].reason`
+// `group_terms_not_accepted` or `in_review`; 422 `BIZ007` the name does not match; 409 `BIZ009`
+// the Tax ID is verified for another organisation; 429 `BIZ002` the day's checks are used up.
+func (s *OrganizationService) VerifySubOrganizationTaxID(ctx context.Context, subOrganizationID string, params *VerifyChildOrganizationTaxIdBody, opts ...RequestOption) (*VerifyChildOrganizationTaxIdData, error) {
+	out := &VerifyChildOrganizationTaxIdData{}
+	err := s.call(ctx, Call{Method: "POST", Path: "/a/v1/organizations/me/children/" + seg(subOrganizationID) + "/onboarding/tax-id", Body: params, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// SetSubOrganizationContact is managed onboarding, step 3: it sets the contact details of a
+// business this key is onboarding (`organization.children.onboard`). PhoneNumber is the business
+// owner's own phone: the setup link's codes go to it and nowhere else. The same values again
+// change nothing and never undo the phone check; a changed number clears it and stops the working
+// setup link. 409 `RES002` (`errors[0].phoneNumber`) when another business being onboarded uses
+// the number.
+func (s *OrganizationService) SetSubOrganizationContact(ctx context.Context, subOrganizationID string, params *SetChildOrganizationContactBody, opts ...RequestOption) (*SetChildOrganizationContactData, error) {
+	out := &SetChildOrganizationContactData{}
+	err := s.call(ctx, Call{Method: "PUT", Path: "/a/v1/organizations/me/children/" + seg(subOrganizationID) + "/onboarding/contact", Body: params, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// CreateSubOrganizationSetupLink is managed onboarding, step 4: it creates the setup link the
+// business owner finishes on (`organization.children.onboard`). URL is answered ONCE: Yona keeps
+// only a fingerprint of it, so store it or send it straight away. A link works for 14 days unless
+// ExpiresInDays says otherwise (30 at most). A business has one working link: a new one stops the
+// one before it. A nil params sends `{}`, and the link takes the default life.
+//
+// Sends an `Idempotency-Key` (generated unless WithIdempotencyKey is given), so a retried call
+// answers the same link with a nil URL and `Replayed: true`, and makes no second link. This is
+// also the one call the key may make for a business Yona has approved, when its owner lost the
+// link before finishing.
+func (s *OrganizationService) CreateSubOrganizationSetupLink(ctx context.Context, subOrganizationID string, params *CreateChildOrganizationSetupLinkBody, opts ...RequestOption) (*CreateChildOrganizationSetupLinkData, error) {
+	var body any = params
+	if params == nil {
+		body = struct{}{}
+	}
+	out := &CreateChildOrganizationSetupLinkData{}
+	err := s.call(ctx, Call{Method: "POST", Path: "/a/v1/organizations/me/children/" + seg(subOrganizationID) + "/setup-link", Body: body, Idempotent: true, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// RevokeSubOrganizationSetupLink withdraws the working setup link of a business at once
+// (`organization.children.onboard`). Revoked is false, and nothing changes, when there was no
+// working link.
+func (s *OrganizationService) RevokeSubOrganizationSetupLink(ctx context.Context, subOrganizationID string, opts ...RequestOption) (*RevokeChildOrganizationSetupLinkData, error) {
+	out := &RevokeChildOrganizationSetupLinkData{}
+	err := s.call(ctx, Call{Method: "DELETE", Path: "/a/v1/organizations/me/children/" + seg(subOrganizationID) + "/setup-link", Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// SubmitSubOrganization is managed onboarding, step 5: it asks Yona to review a business this key
+// is onboarding (`organization.children.onboard`). It can be called before the owner has verified
+// the phone: State is then `awaiting_phone_verification`, and the business goes to review by
+// itself when the owner enters the code on the setup link. With the phone verified, State is
+// `in_review`. A business already submitted answers where it stands, with `Replayed: true`. No
+// `Idempotency-Key` is sent and the call is not retried. 409 `BIZ010` (`errors[].missing`: `tin`,
+// `contact_info`) when an earlier step is missing. Yona approves; a key never does.
+func (s *OrganizationService) SubmitSubOrganization(ctx context.Context, subOrganizationID string, opts ...RequestOption) (*SubmitChildOrganizationOnboardingData, error) {
+	out := &SubmitChildOrganizationOnboardingData{}
+	err := s.call(ctx, Call{Method: "POST", Path: "/a/v1/organizations/me/children/" + seg(subOrganizationID) + "/onboarding/submit", Options: requestOptions(opts)}, out)
 	return out, err
 }
 

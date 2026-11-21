@@ -37,14 +37,14 @@ type Client struct {
 	InvoiceSettings *InvoiceSettingsService
 	// TaxConnection: the connection to the tax authority (read-only).
 	TaxConnection *TaxConnectionService
-	// Organization: the key's organisation (read-only).
+	// Organization: the key's organisation (read-only), its sub-organisations and their managed onboarding.
 	Organization *OrganizationService
 	// Billing reads: account, ledger, statements, subscriptions, payments, sandbox allowance, invoice
 	// usage, plans, partner.
 	Billing *BillingService
 	// Collections: accounts that collect invoice payments, the payments, buyer credit, exceptions, settlement.
 	Collections *CollectionsService
-	// Webhooks: endpoints (read, test), deliveries, events and the event catalogue.
+	// Webhooks: endpoints (read, test), deliveries, events, the event catalogue and delivery health.
 	Webhooks *WebhooksService
 	// HTTP is the transport, for advanced use.
 	HTTP *HttpClient

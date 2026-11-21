@@ -333,24 +333,30 @@ func TestClientAListOfIDsReachesTheAPIAsOneCommaSeparatedValueNotARepeatedKey(t 
 }
 
 // The hand-written sub-organisation queries and body are the generated ones with `ids` as a list
-// and without `country`: a parameter the API adds must be added to them too.
+// and without `country` and `groupOnboarding` (the signed-in person's field): a parameter the API
+// adds must be added to them too.
 func TestClientTheSubOrganisationParamsCarryTheOperationsOwnFields(t *testing.T) {
-	names := func(v any, without string) string {
+	names := func(v any, without ...string) string {
 		var out []string
 		rt := reflect.TypeOf(v)
+	fields:
 		for i := 0; i < rt.NumField(); i++ {
-			if name := strings.Split(rt.Field(i).Tag.Get("json"), ",")[0]; name != without {
-				out = append(out, name)
+			name := strings.Split(rt.Field(i).Tag.Get("json"), ",")[0]
+			for _, w := range without {
+				if name == w {
+					continue fields
+				}
 			}
+			out = append(out, name)
 		}
 		sort.Strings(out)
 		return strings.Join(out, ",")
 	}
 	pairs := [][2]string{
-		{names(ListSubOrganizationsQuery{}, ""), names(ListChildOrganizationsQuery{}, "")},
-		{names(ListSubOrganizationsReadinessQuery{}, ""), names(ListChildOrganizationsReadinessQuery{}, "")},
-		{names(SubOrganizationTaxConnectionsQuery{}, ""), names(ListChildTaxConnectionsQuery{}, "")},
-		{names(CreateSubOrganizationBody{}, ""), names(CreateOrganizationBody{}, "country")},
+		{names(ListSubOrganizationsQuery{}), names(ListChildOrganizationsQuery{})},
+		{names(ListSubOrganizationsReadinessQuery{}), names(ListChildOrganizationsReadinessQuery{})},
+		{names(SubOrganizationTaxConnectionsQuery{}), names(ListChildTaxConnectionsQuery{})},
+		{names(CreateSubOrganizationBody{}), names(CreateOrganizationBody{}, "country", "groupOnboarding")},
 	}
 	for i, p := range pairs {
 		if p[0] != p[1] || p[0] == "" {
@@ -359,30 +365,248 @@ func TestClientTheSubOrganisationParamsCarryTheOperationsOwnFields(t *testing.T)
 	}
 }
 
-func TestClientCreateSubOrganizationPostsTheBodyWithNoIdempotencyKeyAndSoNoRetry(t *testing.T) {
+func TestClientCreateSubOrganizationPostsTheBodyWithAnIdempotencyKeySoARetryIsSafe(t *testing.T) {
 	f := newFake(okAnswer(map[string]any{"id": "c9", "type": "secondary", "status": "pending_verification"}))
 	c, err := New(liveKey, WithTransport(f))
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx := context.Background()
-	created, err := c.Organization.CreateSubOrganization(ctx, &CreateSubOrganizationBody{BusinessName: "Acme Retail Ltd", Email: "accounts@acme.example"})
+	body := &CreateSubOrganizationBody{BusinessName: "Acme Retail Ltd", Email: "accounts@acme.example", ExternalReference: Ptr("crm-0042")}
+	created, err := c.Organization.CreateSubOrganization(ctx, body)
 	if err != nil || created.ID != "c9" || created.Type != "secondary" || created.Status != "pending_verification" {
 		t.Fatalf("%+v %v", created, err)
 	}
+	// The route reads an Idempotency-Key since managed onboarding: the same key answers the business already made.
 	req := f.requests[0]
-	if req.Method != "POST" || req.URL.Path != "/a/v1/organizations" || req.Header.Get("Idempotency-Key") != "" {
+	if req.Method != "POST" || req.URL.Path != "/a/v1/organizations" || !idempotencyKeyPattern.MatchString(req.Header.Get("Idempotency-Key")) {
 		t.Fatal(req.Method, req.URL.Path, req.Header.Get("Idempotency-Key"))
 	}
-	if body := f.bodies[0]; body != `{"businessName":"Acme Retail Ltd","email":"accounts@acme.example"}` {
-		t.Fatal(body)
+	if got := f.bodies[0]; got != `{"businessName":"Acme Retail Ltd","email":"accounts@acme.example","externalReference":"crm-0042"}` {
+		t.Fatal(got)
+	}
+	if _, err := c.Organization.CreateSubOrganization(ctx, body, WithIdempotencyKey("create-crm-0042")); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.requests[1].Header.Values("Idempotency-Key"); len(got) != 1 || got[0] != "create-crm-0042" {
+		t.Fatal(got)
 	}
 
-	f = newFake(refusal(503, "SYS001", nil, nil), refusal(503, "SYS001", nil, nil))
-	_, err = newClient(t, f).Organization.CreateSubOrganization(ctx, &CreateSubOrganizationBody{BusinessName: "Acme Retail Ltd", Email: "accounts@acme.example"})
-	var se *ServerError
-	if !errors.As(err, &se) || f.calls() != 1 {
+	// A refused attempt is sent again, under the same key.
+	f = newFake(refusal(503, "SYS001", nil, nil), okAnswer(map[string]any{"id": "c9", "replayed": true}))
+	created, err = newClient(t, f).Organization.CreateSubOrganization(ctx, body)
+	if err != nil || created.ID != "c9" || created.Replayed == nil || !*created.Replayed || f.calls() != 2 {
+		t.Fatalf("%+v %v %d", created, err, f.calls())
+	}
+	if first := f.requests[0].Header.Get("Idempotency-Key"); first == "" || f.requests[1].Header.Get("Idempotency-Key") != first {
+		t.Fatal("the retry did not keep the key")
+	}
+}
+
+func TestClientManagedOnboardingTheFiveStepsAParentsKeyTakesForABusinessEachOnItsOwnRoute(t *testing.T) {
+	f := newFake(okAnswer(map[string]any{}))
+	c, err := New(liveKey, WithTransport(f))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	const id = "c9"
+	const base = "/a/v1/organizations/me/children/" + id
+	check := func(i int, method, path, body string, keyed bool) {
+		t.Helper()
+		req := f.requests[i]
+		if req.Method != method || req.URL.Path != path || f.bodies[i] != body || (req.Header.Get("Idempotency-Key") != "") != keyed {
+			t.Fatalf("call %d: %s %s %q key %q, want %s %s %q keyed %v", i, req.Method, req.URL.Path, f.bodies[i], req.Header.Get("Idempotency-Key"), method, path, body, keyed)
+		}
+	}
+
+	if _, err := c.Organization.GetGroupTerms(ctx); err != nil {
+		t.Fatal(err)
+	}
+	check(0, "GET", "/a/v1/organizations/me/group-terms", "", false)
+
+	if _, err := c.Organization.VerifySubOrganizationTaxID(ctx, id, &VerifyChildOrganizationTaxIdBody{BusinessName: "Bola Stores Limited", TaxNo: "1234567890123"}); err != nil {
+		t.Fatal(err)
+	}
+	check(1, "POST", base+"/onboarding/tax-id", `{"businessName":"Bola Stores Limited","taxNo":"1234567890123"}`, false)
+
+	if _, err := c.Organization.SetSubOrganizationContact(ctx, id, &SetChildOrganizationContactBody{PhoneNumber: "+2348031234567", ContactEmail: Ptr("accounts@bolastores.example")}); err != nil {
+		t.Fatal(err)
+	}
+	check(2, "PUT", base+"/onboarding/contact", `{"phoneNumber":"+2348031234567","contactEmail":"accounts@bolastores.example"}`, false)
+
+	if _, err := c.Organization.CreateSubOrganizationSetupLink(ctx, id, &CreateChildOrganizationSetupLinkBody{ExpiresInDays: Ptr(14.0)}); err != nil {
+		t.Fatal(err)
+	}
+	check(3, "POST", base+"/setup-link", `{"expiresInDays":14}`, true)
+	// Without a life the body is empty, and the link takes the default.
+	if _, err := c.Organization.CreateSubOrganizationSetupLink(ctx, id, nil, WithIdempotencyKey("link-crm-0042")); err != nil {
+		t.Fatal(err)
+	}
+	check(4, "POST", base+"/setup-link", `{}`, true)
+	if f.requests[4].Header.Get("Idempotency-Key") != "link-crm-0042" {
+		t.Fatal(f.requests[4].Header)
+	}
+
+	if _, err := c.Organization.SubmitSubOrganization(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	check(5, "POST", base+"/onboarding/submit", "", false)
+
+	if _, err := c.Organization.RevokeSubOrganizationSetupLink(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	check(6, "DELETE", base+"/setup-link", "", false)
+}
+
+func TestClientManagedOnboardingAnswersDecodeAndTheSetupLinkURLIsNilOnARepeat(t *testing.T) {
+	f := newFake(
+		okAnswer(map[string]any{"currentVersion": "2026-11", "accepted": true, "acceptedVersion": "2026-11", "acceptedAt": "2026-11-19T10:02:00.000Z", "acceptedByUserId": "u1"}),
+		okAnswer(map[string]any{"verificationId": "v1", "tinStatus": "verified", "legalName": "BOLA STORES LIMITED", "tin": "1234567890123", "verifiedAt": "2026-11-21T10:00:00.000Z", "replayed": true}),
+		okAnswer(map[string]any{"contactPhone": "+2348031234567", "phoneVerified": false, "contactEmail": nil, "address": nil}),
+		okAnswer(map[string]any{"id": "l1", "organizationId": "c9", "url": "https://app.useyona.com/setup#once", "expiresAt": "2026-12-05T10:00:00.000Z"}),
+		okAnswer(map[string]any{"id": "l1", "organizationId": "c9", "url": nil, "expiresAt": "2026-12-05T10:00:00.000Z", "replayed": true}),
+		okAnswer(map[string]any{"organizationId": "c9", "state": "awaiting_phone_verification", "liveStatus": "not_requested", "phoneVerified": false}),
+		okAnswer(map[string]any{"revoked": false, "linkId": nil}),
+	)
+	c := newClient(t, f)
+	ctx := context.Background()
+	terms, err := c.Organization.GetGroupTerms(ctx)
+	if err != nil || !terms.Accepted || terms.CurrentVersion != "2026-11" || terms.AcceptedByUserID == nil || *terms.AcceptedByUserID != "u1" {
+		t.Fatalf("%+v %v", terms, err)
+	}
+	taxID, err := c.Organization.VerifySubOrganizationTaxID(ctx, "c9", &VerifyChildOrganizationTaxIdBody{BusinessName: "Bola Stores Limited", TaxNo: "1234567890123"})
+	if err != nil || taxID.TINStatus != "verified" || taxID.LegalName != "BOLA STORES LIMITED" || taxID.Replayed == nil || !*taxID.Replayed {
+		t.Fatalf("%+v %v", taxID, err)
+	}
+	contact, err := c.Organization.SetSubOrganizationContact(ctx, "c9", &SetChildOrganizationContactBody{PhoneNumber: "+2348031234567"})
+	if err != nil || contact.ContactPhone != "+2348031234567" || contact.PhoneVerified || contact.ContactEmail != nil {
+		t.Fatalf("%+v %v", contact, err)
+	}
+	link, err := c.Organization.CreateSubOrganizationSetupLink(ctx, "c9", nil)
+	if err != nil || link.URL == nil || *link.URL != "https://app.useyona.com/setup#once" || link.Replayed != nil {
+		t.Fatalf("%+v %v", link, err)
+	}
+	again, err := c.Organization.CreateSubOrganizationSetupLink(ctx, "c9", nil)
+	if err != nil || again.ID != "l1" || again.URL != nil || again.Replayed == nil || !*again.Replayed {
+		t.Fatalf("%+v %v", again, err)
+	}
+	submitted, err := c.Organization.SubmitSubOrganization(ctx, "c9")
+	if err != nil || submitted.State != "awaiting_phone_verification" || submitted.PhoneVerified || submitted.Replayed != nil {
+		t.Fatalf("%+v %v", submitted, err)
+	}
+	revoked, err := c.Organization.RevokeSubOrganizationSetupLink(ctx, "c9")
+	if err != nil || revoked.Revoked || revoked.LinkID != nil {
+		t.Fatalf("%+v %v", revoked, err)
+	}
+}
+
+func TestClientManagedOnboardingOnlyTheKeyedStepsAreRetriedAmongTheWrites(t *testing.T) {
+	ctx := context.Background()
+	// The Tax ID check and the submit take no Idempotency-Key: a refused POST is not sent again.
+	for name, call := range map[string]func(c *Client) error{
+		"VerifySubOrganizationTaxID": func(c *Client) error {
+			_, err := c.Organization.VerifySubOrganizationTaxID(ctx, "c9", &VerifyChildOrganizationTaxIdBody{})
+			return err
+		},
+		"SubmitSubOrganization": func(c *Client) error { _, err := c.Organization.SubmitSubOrganization(ctx, "c9"); return err },
+	} {
+		f := newFake(refusal(503, "SYS001", nil, nil), refusal(503, "SYS001", nil, nil))
+		var se *ServerError
+		if err := call(newClient(t, f)); !errors.As(err, &se) || f.calls() != 1 {
+			t.Fatal(name, err, f.calls())
+		}
+	}
+	// The setup link is keyed: its retry carries the same key, so no second link is made.
+	f := newFake(refusal(503, "SYS001", nil, nil), okAnswer(map[string]any{"id": "l1", "url": nil, "replayed": true}))
+	if _, err := newClient(t, f).Organization.CreateSubOrganizationSetupLink(ctx, "c9", nil); err != nil || f.calls() != 2 {
 		t.Fatal(err, f.calls())
+	}
+	if first := f.requests[0].Header.Get("Idempotency-Key"); first == "" || f.requests[1].Header.Get("Idempotency-Key") != first {
+		t.Fatal("the retry did not keep the key")
+	}
+}
+
+func TestClientABusinessIDIsOnePathSegmentHoweverItIsSpelt(t *testing.T) {
+	f := newFake(okAnswer(map[string]any{}))
+	c := newClient(t, f)
+	ctx := context.Background()
+	const id = "../../me"
+	const base = "/a/v1/organizations/me/children/..%2F..%2Fme"
+	if _, err := c.Organization.SubmitSubOrganization(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Organization.VerifySubOrganizationTaxID(ctx, id, &VerifyChildOrganizationTaxIdBody{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Organization.SetSubOrganizationContact(ctx, id, &SetChildOrganizationContactBody{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Organization.CreateSubOrganizationSetupLink(ctx, id, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Organization.RevokeSubOrganizationSetupLink(ctx, id); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{base + "/onboarding/submit", base + "/onboarding/tax-id", base + "/onboarding/contact", base + "/setup-link", base + "/setup-link"}
+	for i, w := range want {
+		if got := f.requests[i].URL.EscapedPath(); got != w {
+			t.Fatalf("call %d: %s, want %s", i, got, w)
+		}
+	}
+}
+
+func TestClientTheReadsOpenedToAPIKeysSince022CreditCostsAddOnsCollectionAndWebhookHealth(t *testing.T) {
+	f := newFake(okAnswer(map[string]any{}))
+	c := newClient(t, f)
+	ctx := context.Background()
+	const from, to = "2026-11-01T00:00:00.000Z", "2026-11-20T00:00:00.000Z"
+	if _, err := c.Billing.Accounts.GetCreditCosts(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Billing.Subscriptions.ListAddOns(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Billing.Subscriptions.QuoteAddOn(ctx, "sub_org_slot", &GetAddOnQuoteQuery{Slots: 5}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Collections.GetSummary(ctx, &GetCollectionSummaryQuery{From: from, To: to}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Collections.GetDailySeries(ctx, &GetCollectionDailySeriesQuery{From: from, To: to}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Webhooks.Health.Get(ctx, &GetWebhookHealthQuery{From: from, To: to}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Webhooks.Health.GetDaily(ctx, &GetWebhookHealthDailyQuery{From: from, To: to, EndpointID: Ptr("e1")}); err != nil {
+		t.Fatal(err)
+	}
+	const window = "from=2026-11-01T00%3A00%3A00.000Z&to=2026-11-20T00%3A00%3A00.000Z"
+	want := []string{
+		"GET /b/v1/billing-accounts/me/credit-costs",
+		"GET /b/v1/subscription/add-ons",
+		"GET /b/v1/subscription/add-ons/sub_org_slot/quote?slots=5",
+		"GET /b/v1/collection/summary?" + window,
+		"GET /b/v1/collection/summary/daily?" + window,
+		"GET /n/v1/webhook-health?" + window,
+		"GET /n/v1/webhook-health/daily?" + window + "&endpointId=e1",
+	}
+	for i, w := range want {
+		got := f.requests[i].Method + " " + f.requests[i].URL.Path
+		if q := f.requests[i].URL.RawQuery; q != "" {
+			got += "?" + q
+		}
+		if got != w || f.requests[i].Header.Get("Idempotency-Key") != "" {
+			t.Fatalf("call %d: %s, want %s", i, got, w)
+		}
+	}
+	// An add-on's kind is one path segment too.
+	if _, err := c.Billing.Subscriptions.QuoteAddOn(ctx, "a/b", &GetAddOnQuoteQuery{Slots: 1}); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.requests[7].URL.EscapedPath(); got != "/b/v1/subscription/add-ons/a%2Fb/quote" {
+		t.Fatal(got)
 	}
 }
 
@@ -534,6 +758,19 @@ func TestClientHasNoPaymentsServiceMethodsUntilPaymentsLaunchesInProduction(t *t
 	}
 	if n != 5 {
 		t.Fatalf("%d excluded payments operations", n)
+	}
+}
+
+// The API renamed the schema of AccountPlanDto.Entitlements; the earlier name still compiles.
+func TestClientPlanEntitlementsDtoIsStillAccountEntitlementsDtoUnderItsEarlierName(t *testing.T) {
+	var earlier PlanEntitlementsDto = AccountEntitlementsDto{Assistant: true, Payments: true}
+	var current AccountEntitlementsDto = earlier
+	plan := AccountPlanDto{Entitlements: earlier}
+	if !current.Assistant || current.Whatsapp || !plan.Entitlements.Payments {
+		t.Fatalf("%+v %+v", current, plan.Entitlements)
+	}
+	if reflect.TypeOf(earlier) != reflect.TypeOf(current) {
+		t.Fatal("PlanEntitlementsDto is not AccountEntitlementsDto")
 	}
 }
 

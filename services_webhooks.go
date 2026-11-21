@@ -86,6 +86,26 @@ func (s *WebhookEventTypesService) List(ctx context.Context, opts ...RequestOpti
 	return out, err
 }
 
+// WebhookHealthService is delivery health (`/n/v1/webhook-health`): how the organisation's webhooks
+// have been arriving.
+type WebhookHealthService struct{ baseService }
+
+// Get is the deliveries between `From` and `To` (31 days at most), counted for each endpoint and
+// event type (`webhook.delivery.read`).
+func (s *WebhookHealthService) Get(ctx context.Context, query *GetWebhookHealthQuery, opts ...RequestOption) (*GetWebhookHealthData, error) {
+	out := &GetWebhookHealthData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/n/v1/webhook-health", Query: query, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
+// GetDaily is the deliveries for each UTC day between `From` and `To`, 31 days at most; EndpointID
+// keeps one endpoint (`webhook.delivery.read`).
+func (s *WebhookHealthService) GetDaily(ctx context.Context, query *GetWebhookHealthDailyQuery, opts ...RequestOption) (*GetWebhookHealthDailyData, error) {
+	out := &GetWebhookHealthDailyData{}
+	err := s.call(ctx, Call{Method: "GET", Path: "/n/v1/webhook-health/daily", Query: query, Options: requestOptions(opts)}, out)
+	return out, err
+}
+
 // WebhooksService is webhooks (`/n/v1`), grouped as the API tags it. Verify deliveries with VerifyWebhook.
 type WebhooksService struct {
 	// Endpoints (read and test).
@@ -96,6 +116,8 @@ type WebhooksService struct {
 	Events *WebhookEventsService
 	// EventTypes: the event catalogue.
 	EventTypes *WebhookEventTypesService
+	// Health: delivery health over a window.
+	Health *WebhookHealthService
 }
 
 func newWebhooksService(base baseService) *WebhooksService {
@@ -104,5 +126,6 @@ func newWebhooksService(base baseService) *WebhooksService {
 		Deliveries: &WebhookDeliveriesService{base},
 		Events:     &WebhookEventsService{base},
 		EventTypes: &WebhookEventTypesService{base},
+		Health:     &WebhookHealthService{base},
 	}
 }

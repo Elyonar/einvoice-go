@@ -225,6 +225,31 @@ func TestOrganizationChildCreatedDataCarriesKeyIDOnlyWhenAnAPIKeyCreatedIt(t *te
 	}
 }
 
+func TestOrganizationChildDataOfTheManagedOnboardingStepsDecodes(t *testing.T) {
+	steps := []WebhookEventType{
+		WebhookEventOrganizationChildTaxIDVerified, WebhookEventOrganizationChildOnboardingSubmitted,
+		WebhookEventOrganizationChildPhoneVerified, WebhookEventOrganizationChildLiveAccessApproved,
+		WebhookEventOrganizationChildLiveAccessRejected, WebhookEventOrganizationChildTaxConnectionConnected,
+	}
+	for _, typ := range steps {
+		event := WebhookEvent{Type: typ, Data: json.RawMessage(`{"childOrganizationId":"c9"}`)}
+		var step OrganizationChildStepData
+		if err := event.DecodeData(&step); err != nil || step.ChildOrganizationID != "c9" {
+			t.Fatalf("%s: %+v %v", typ, step, err)
+		}
+	}
+	waiting := WebhookEvent{Type: WebhookEventOrganizationChildTaxConnectionActionRequired, Data: json.RawMessage(`{"childOrganizationId":"c9","state":"awaiting_authority_listing","nextAction":"enable_on_nrs","nextActionBy":"taxpayer"}`)}
+	var action OrganizationChildTaxConnectionActionRequiredData
+	if err := waiting.DecodeData(&action); err != nil || action != (OrganizationChildTaxConnectionActionRequiredData{ChildOrganizationID: "c9", State: "awaiting_authority_listing", NextAction: "enable_on_nrs", NextActionBy: "taxpayer"}) {
+		t.Fatalf("%+v %v", action, err)
+	}
+	withdrawn := WebhookEvent{Type: WebhookEventOrganizationChildTaxConnectionSuspended, Data: json.RawMessage(`{"childOrganizationId":"c9","nextAction":"reconnect"}`)}
+	var suspended OrganizationChildTaxConnectionSuspendedData
+	if err := withdrawn.DecodeData(&suspended); err != nil || suspended.ChildOrganizationID != "c9" || suspended.NextAction != "reconnect" {
+		t.Fatalf("%+v %v", suspended, err)
+	}
+}
+
 func TestInvoiceFinalisedDataCarriesReportingWhenTheAPISendsItAndStillReadsWithoutIt(t *testing.T) {
 	const secret = "whsec_test_finalised"
 	base := `"id":"evt-1","type":"invoice.finalised","version":1,"createdAt":"2026-11-12T10:00:00Z","mode":"live","organizationId":"org-1"`
@@ -295,5 +320,24 @@ func TestWebhookEventTypeCatalogue(t *testing.T) {
 	}
 	if WebhookEventWebhookEndpointFlagged != "webhook_endpoint.flagged" {
 		t.Fatal("catalogue end")
+	}
+	// The eight types a parent hears while a business is taken through managed onboarding.
+	child := map[WebhookEventType]string{
+		WebhookEventOrganizationChildTaxIDVerified:               "organization.child.tax_id_verified",
+		WebhookEventOrganizationChildOnboardingSubmitted:         "organization.child.onboarding_submitted",
+		WebhookEventOrganizationChildPhoneVerified:               "organization.child.phone_verified",
+		WebhookEventOrganizationChildLiveAccessApproved:          "organization.child.live_access_approved",
+		WebhookEventOrganizationChildLiveAccessRejected:          "organization.child.live_access_rejected",
+		WebhookEventOrganizationChildTaxConnectionActionRequired: "organization.child.tax_connection_action_required",
+		WebhookEventOrganizationChildTaxConnectionConnected:      "organization.child.tax_connection_connected",
+		WebhookEventOrganizationChildTaxConnectionSuspended:      "organization.child.tax_connection_suspended",
+	}
+	if len(child) != 8 {
+		t.Fatal(len(child))
+	}
+	for constant, wire := range child {
+		if string(constant) != wire {
+			t.Fatalf("%s is not %s", constant, wire)
+		}
 	}
 }

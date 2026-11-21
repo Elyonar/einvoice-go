@@ -2,7 +2,7 @@
   "language": "go",
   "package": "github.com/elyonar/einvoice-go",
   "sdkVersion": "0.2.2",
-  "generatedFrom": "812e58e",
+  "generatedFrom": "2105d8f",
   "setup": "import (\n\t\"context\"\n\t\"encoding/json\"\n\t\"log\"\n\t\"os\"\n\n\t\"github.com/elyonar/einvoice-go\"\n)\n\nctx := context.Background()\nyona, err := einvoice.New(os.Getenv(\"YONA_API_KEY\"))\nif err != nil {\n\tlog.Fatal(err)\n}",
   "literal": {
     "string": "go",
@@ -53,6 +53,11 @@
       "module": "Buyers",
       "method": "Create",
       "template": "var params einvoice.CreateBuyerBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Buyers.Create(ctx, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "createChildOrganizationSetupLink": {
+      "module": "Organization",
+      "method": "CreateSubOrganizationSetupLink",
+      "template": "var params einvoice.CreateChildOrganizationSetupLinkBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Organization.CreateSubOrganizationSetupLink(ctx, {{path:childId}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "createCollectionAccount": {
       "module": "Collections",
@@ -119,6 +124,16 @@
       "method": "GetActive",
       "template": "result, err := yona.Billing.Subscriptions.GetActive(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
+    "getAddOnQuote": {
+      "module": "Billing.Subscriptions",
+      "method": "QuoteAddOn",
+      "template": "var query einvoice.GetAddOnQuoteQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Billing.Subscriptions.QuoteAddOn(ctx, {{path:kind}}, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getAddOns": {
+      "module": "Billing.Subscriptions",
+      "method": "ListAddOns",
+      "template": "result, err := yona.Billing.Subscriptions.ListAddOns(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
     "getBillingAccount": {
       "module": "Billing.Accounts",
       "method": "GetMine",
@@ -154,15 +169,30 @@
       "method": "GetAccountStatus",
       "template": "result, err := yona.Collections.GetAccountStatus(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
+    "getCollectionDailySeries": {
+      "module": "Collections",
+      "method": "GetDailySeries",
+      "template": "var query einvoice.GetCollectionDailySeriesQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.GetDailySeries(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
     "getCollectionSettlementAccount": {
       "module": "Collections",
       "method": "GetSettlementAccount",
       "template": "result, err := yona.Collections.GetSettlementAccount(ctx, {{path:sellerId}})\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
+    "getCollectionSummary": {
+      "module": "Collections",
+      "method": "GetSummary",
+      "template": "var query einvoice.GetCollectionSummaryQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Collections.GetSummary(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
     "getDealOffer": {
       "module": "Billing.Subscriptions",
       "method": "GetDealOffer",
       "template": "result, err := yona.Billing.Subscriptions.GetDealOffer(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getGroupTerms": {
+      "module": "Organization",
+      "method": "GetGroupTerms",
+      "template": "result, err := yona.Organization.GetGroupTerms(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "getInboundHistoryRun": {
       "module": "InboundInvoices",
@@ -243,6 +273,11 @@
       "module": "Organization",
       "method": "Get",
       "template": "result, err := yona.Organization.Get(ctx, {{path:orgId}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getOrganizationCreditCosts": {
+      "module": "Billing.Accounts",
+      "method": "GetCreditCosts",
+      "template": "result, err := yona.Billing.Accounts.GetCreditCosts(ctx)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "getOrganizationReadiness": {
       "module": "Organization",
@@ -343,6 +378,16 @@
       "module": "Webhooks.Events",
       "method": "Get",
       "template": "result, err := yona.Webhooks.Events.Get(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getWebhookHealth": {
+      "module": "Webhooks.Health",
+      "method": "Get",
+      "template": "var query einvoice.GetWebhookHealthQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Webhooks.Health.Get(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "getWebhookHealthDaily": {
+      "module": "Webhooks.Health",
+      "method": "GetDaily",
+      "template": "var query einvoice.GetWebhookHealthDailyQuery\nif err := json.Unmarshal([]byte({{query}}), &query); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Webhooks.Health.GetDaily(ctx, &query)\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "issueCreditNote": {
       "module": "Invoices",
@@ -574,6 +619,11 @@
       "method": "Revise",
       "template": "result, err := yona.Invoices.Revise(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
+    "revokeChildOrganizationSetupLink": {
+      "module": "Organization",
+      "method": "RevokeSubOrganizationSetupLink",
+      "template": "result, err := yona.Organization.RevokeSubOrganizationSetupLink(ctx, {{path:childId}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
     "revokeInvoiceShareLink": {
       "module": "ShareLinks",
       "method": "Revoke",
@@ -593,6 +643,16 @@
       "module": "Output",
       "method": "Send",
       "template": "var params einvoice.SendInvoiceBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Output.Send(ctx, {{path:id}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "setChildOrganizationContact": {
+      "module": "Organization",
+      "method": "SetSubOrganizationContact",
+      "template": "var params einvoice.SetChildOrganizationContactBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Organization.SetSubOrganizationContact(ctx, {{path:childId}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "submitChildOrganizationOnboarding": {
+      "module": "Organization",
+      "method": "SubmitSubOrganization",
+      "template": "result, err := yona.Organization.SubmitSubOrganization(ctx, {{path:childId}})\nif err != nil {\n\tlog.Fatal(err)\n}"
     },
     "submitInvoice": {
       "module": "Submissions",
@@ -633,6 +693,11 @@
       "module": "Buyers",
       "method": "VerifyTaxNumber",
       "template": "result, err := yona.Buyers.VerifyTaxNumber(ctx, {{path:id}})\nif err != nil {\n\tlog.Fatal(err)\n}"
+    },
+    "verifyChildOrganizationTaxId": {
+      "module": "Organization",
+      "method": "VerifySubOrganizationTaxID",
+      "template": "var params einvoice.VerifyChildOrganizationTaxIdBody\nif err := json.Unmarshal([]byte({{body}}), &params); err != nil {\n\tlog.Fatal(err)\n}\nresult, err := yona.Organization.VerifySubOrganizationTaxID(ctx, {{path:childId}}, &params)\nif err != nil {\n\tlog.Fatal(err)\n}"
     }
   }
 }
